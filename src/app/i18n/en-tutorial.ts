@@ -25,7 +25,7 @@ Full guide: https://wiki.hktrpg.com/TRPG/Udonarium烏冬教學`,
 　　　　Right-click = menu
 　　　　Double-click = details (character / card / deck / dice / terrain / note / mask / range…; face-down cards blocked for players)
 　　　　Character “Next image” = right-click “Switch to next image”
-　　　　Cards／decks: right-click draw to hand・deal; F = flip card / turn over deck; dice = right-click or F
+　　　　Cards／decks: right-click draw to hand・deal; F = flip card / turn over deck; dice = right-click or R
 <Path move> After selecting a token: Ctrl+left-click = add waypoint (release Ctrl — path stays)
 　　　　Left-click new position = final stop and go
 　　　　Space = go with current waypoints
@@ -44,9 +44,9 @@ Drag images or music into the browser to import.`,
 　　　　Shift+WASD = face direction
 　　　　Q/E = rotate ±45°
 　　　　Shift+Q/E = ±15°
-　　　　R = reset all angles (facing / tilt) to 0°
 　　　　PageUp/PageDown = altitude ±1 (Shift = ±0.5)
-　　　　F = flip card / turn over deck / coin or roll dice
+　　　　F = flip card / turn over deck
+　　　　R = roll dice / coin; shuffle hovered stack; else reset facing / tilt
 　　　　L = lock/unlock
 　　　　H = hide/reveal selected characters (GM only)
 　　　　T = gather selected objects to mouse position
@@ -137,7 +137,7 @@ Upgraded to 1.13.2`,
   'changelog.2026ops': `2026/08/03 Controls update
 ・Selection highlight; left-drag empty box select; Shift+click/drag multi-select; right-drag pan map
 ・Double-click opens details (flip / draw / roll via right-click)
-・Keyboard (with selection): WASD move, Shift+WASD face, Q/E rotate, R reset all angles, PageUp/Down altitude, F flip, L lock, H hide (GM), T gather to mouse, Delete, Ctrl+C　Ctrl+X　Ctrl+V, Ctrl+Z/Y
+・Keyboard (with selection): WASD move, Shift+WASD face, Q/E rotate, R roll dice / shuffle / reset facing, PageUp/Down altitude, F flip card/deck, L lock, H hide (GM), T gather to mouse, Delete, Ctrl+C　Ctrl+X　Ctrl+V, Ctrl+Z/Y
 ・Chat: 1–9 switch viewable tab (opens chat; no selection required)
 ・C = close all panels; context menu shows shortcut hints (T) (L) etc.
 ・[ / ] layer order; hold Alt = outline table objects (under map masks: GM only); Alt+wheel (select = facing 3° / empty = yaw); Alt+Shift+wheel (select = roll / empty = pitch); Ctrl+Shift+wheel 45°

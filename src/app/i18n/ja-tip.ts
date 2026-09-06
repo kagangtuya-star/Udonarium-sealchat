@@ -118,7 +118,7 @@ export const ja_tip: I18nDictionary = {
   'tour.step.controlsChapter.title': '第4章：選択とショートカット',
   'tour.step.controlsChapter.body': '以降のショートカットの多くは、先にオブジェクトを選択する必要があります（チャット 1–9 などは除く）。\n\n・左クリック＝選択（ハイライト）\n・空白を左ドラッグ＝枠選択\n・Shift＋クリック＝複数選択に追加／同じ対象をもう一度で解除\n・Shift＋ドラッグ＝追加枠選択\n・空白クリック／Esc＝選択解除\n\n（Ctrl＋左はパス経由点用で、複数選択ではありません。）\n一度試してください：クリックまたは枠選択で1つ以上選ぶ。',
   'tour.step.controlsWasd.title': '移動',
-  'tour.step.controlsWasd.body': '先にテーブル上の駒を選択（なければ空白を右クリックして追加）。\n選択後：WASD／矢印＝移動（斜め可）。\nShift＋WASD＝向き変更。\nQ／E＝回転 ±45°（Shift＋Q／E＝±15°）　R＝山札のみ選択時シャッフル、それ以外は向き／傾きリセット。\nPageUp／Down＝高さ　F＝カード裏表／山札ごと裏返し／ダイス　L＝ロック　H＝秘匿（GM）。\n（チャット 1–9 は選択不要。チャット説明を参照。）\n\nWASD または矢印キーを一度押して練習してください。',
+  'tour.step.controlsWasd.body': '先にテーブル上の駒を選択（なければ空白を右クリックして追加）。\n選択後：WASD／矢印＝移動（斜め可）。\nShift＋WASD＝向き変更。\nQ／E＝回転 ±45°（Shift＋Q／E＝±15°）　R＝ダイス／コイン；ホバー山札シャッフル；それ以外は向き／傾きリセット。\nPageUp／Down＝高さ　F＝カード裏表／山札ごと裏返し　L＝ロック　H＝秘匿（GM）。\n（チャット 1–9 は選択不要。チャット説明を参照。）\n\nWASD または矢印キーを一度押して練習してください。',
   'tour.step.controlsDelete.title': '削除',
   'tour.step.controlsDelete.body': '選択後：Delete＝削除（キャラは墓場へ）。',
   'tour.step.controlsDelete.bodyMobile': '選択後、キーボードの Delete で削除。タッチでは長押しメニューから削除。',

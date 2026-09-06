@@ -118,7 +118,7 @@ export const zhCN_tip: I18nDictionary = {
   'tour.step.controlsChapter.title': '第四章：选取与快捷键',
   'tour.step.controlsChapter.body': '后面多数快捷键要先选取物件才有作用（聊天 1–9 等除外）。\n\n・左键点物件＝选取（高亮）\n・左键空白拖曳＝框选大量\n・Shift＋点＝加入多选；再 Shift＋点同一物件＝取消该选取\n・Shift＋拖曳＝加选框选\n・点空白／Esc＝取消全部选取\n\n（Ctrl＋左键用于路径路点，不是多选。）\n请试一次：点选或框选至少一个物件。',
   'tour.step.controlsWasd.title': '移动',
-  'tour.step.controlsWasd.body': '先在桌面点选一个物件（若还没有，可先右键空白处新增角色）。\n选取后：WASD／方向键＝移动（可对角）。\nShift＋WASD＝改变面向。\nQ／E＝旋转 ±45°（Shift＋Q／E＝±15°）　R＝仅选牌堆时洗牌，否则重置面向／倾角。\nPageUp／Down＝高度　F＝单卡翻面／牌堆整叠翻转／骰子　L＝锁定　H＝显隐（GM）。\n（聊天频道 1–9 不需选取，见聊天说明。）\n\n请按一次 WASD 或方向键练习移动。',
+  'tour.step.controlsWasd.body': '先在桌面点选一个物件（若还没有，可先右键空白处新增角色）。\n选取后：WASD／方向键＝移动（可对角）。\nShift＋WASD＝改变面向。\nQ／E＝旋转 ±45°（Shift＋Q／E＝±15°）　R＝掷骰／硬币；悬停牌堆洗牌；否则重置面向／倾角。\nPageUp／Down＝高度　F＝单卡翻面／牌堆整叠翻转　L＝锁定　H＝显隐（GM）。\n（聊天频道 1–9 不需选取，见聊天说明。）\n\n请按一次 WASD 或方向键练习移动。',
   'tour.step.controlsDelete.title': '删除',
   'tour.step.controlsDelete.body': '选取后：Delete＝删除（角色会进回收区）。',
   'tour.step.controlsDelete.bodyMobile': '选取物件后，可用键盘 Delete 删除；触控请用长按选单中的删除。',

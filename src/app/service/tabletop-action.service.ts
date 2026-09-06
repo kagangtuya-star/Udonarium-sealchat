@@ -68,13 +68,13 @@ export class TabletopActionService {
     return [
       {
         name: this.i18n.t('edit.copy'),
-        hotkey: 'C',
+        hotkey: 'Ctrl+C',
         disabled: !hasSelection(),
         action: () => { this.keyboard.copySelection(); },
       },
       {
         name: this.i18n.t('edit.cut'),
-        hotkey: 'X',
+        hotkey: 'Ctrl+X',
         disabled: !hasSelection(),
         action: () => { this.keyboard.cutSelection(); },
       },
@@ -86,7 +86,7 @@ export class TabletopActionService {
     if (this.GuestMode()) return null;
     return {
       name: this.i18n.t('edit.paste'),
-      hotkey: 'V',
+      hotkey: 'Ctrl+V',
       disabled: !this.keyboard.hasClipboard,
       action: () => { this.keyboard.pasteAtPointer(); },
     };
@@ -98,7 +98,7 @@ export class TabletopActionService {
     if (!this.keyboard.hasCharacterClipboard) return null;
     return {
       name: this.i18n.t('edit.pasteTemporary'),
-      hotkey: '⇧V',
+      hotkey: 'Ctrl+⇧V',
       disabled: !this.keyboard.hasClipboard,
       action: () => { this.keyboard.pasteTemporaryAtPointer(); },
     };

@@ -481,7 +481,7 @@ export class DiceSymbolComponent implements OnChanges, AfterViewInit, OnDestroy 
         },
         disabled: !this.isVisible,
         default: this.isVisible,
-        hotkey: 'F',
+        hotkey: 'R',
       });
     //}
     actions.push(ContextMenuSeparator);

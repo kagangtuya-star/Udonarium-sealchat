@@ -124,7 +124,7 @@ export class TabletopKeyboardService {
     return hovered ? [hovered] : [];
   }
 
-  /** F / R: only the card or stack under the pointer — never box-selection alone. */
+  /** F / R (cards): only the card or stack under the pointer — never box-selection alone. */
   private hoverCardOrStackTargets(): TabletopObject[] {
     const hovered = this.resolveHoveredCardOrStack();
     return hovered ? [hovered] : [];
@@ -140,6 +140,33 @@ export class TabletopKeyboardService {
     if (!id) return null;
     const obj = ObjectStore.instance.get(id);
     if (obj instanceof CardStack || obj instanceof Card) return obj;
+    return null;
+  }
+
+  /** R (dice): selected dice, else dice under the pointer. */
+  private diceRollTargets(): DiceSymbol[] {
+    if (this.selectionService.size > 0) {
+      return this.selectionService.objects.filter((o): o is DiceSymbol => o instanceof DiceSymbol);
+    }
+    const hovered = this.resolveHoveredDice();
+    return hovered ? [hovered] : [];
+  }
+
+  /** Dice under the current pointer (page → client for hit-test). */
+  private resolveHoveredDice(): DiceSymbol | null {
+    const ptr = this.pointerDevice.pointers[0];
+    if (!ptr || typeof document === 'undefined') return null;
+    const clientX = ptr.x - (window.scrollX || window.pageXOffset || 0);
+    const clientY = ptr.y - (window.scrollY || window.pageYOffset || 0);
+    const hits = document.elementsFromPoint(clientX, clientY);
+    for (const el of hits) {
+      const host = el.closest?.('dice-symbol');
+      if (!host) continue;
+      const id = host.getAttribute('data-stack-id');
+      if (!id) continue;
+      const obj = ObjectStore.instance.get(id);
+      if (obj instanceof DiceSymbol) return obj;
+    }
     return null;
   }
 
@@ -338,9 +365,14 @@ export class TabletopKeyboardService {
       return;
     }
 
-    // R: shuffle hovered stack, else reset facing on hovered card. Hover required (not box-select).
+    // R: roll selected/hovered dice; else shuffle hovered stack, else reset facing on hovered card.
     if (code === 'KeyR' && !mod && !this.altHeld && !e.shiftKey) {
       if (this.sceneTools.selectionCount > 0) return;
+      const dice = this.diceRollTargets();
+      if (dice.length > 0) {
+        if (this.runInAngular(() => this.rollDiceObjects(dice))) this.consume(e);
+        return;
+      }
       const objects = this.hoverCardOrStackTargets();
       if (objects.length < 1) return;
       if (objects.every(o => o instanceof CardStack)) {
@@ -373,12 +405,12 @@ export class TabletopKeyboardService {
       return;
     }
 
-    // F: flip hovered card, or turn over hovered deck (inverse). Hover required (not box-select).
+    // F: flip hovered card, or turn over hovered deck (inverse). Hover required (not box-select). Dice use R.
     if (code === 'KeyF' && !mod && !this.altHeld && !e.shiftKey) {
       if (this.sceneTools.selectionCount > 0) return;
       const hovered = this.hoverCardOrStackTargets();
       if (hovered.length < 1) return;
-      if (this.runInAngular(() => this.flipObjects(hovered))) this.consume(e);
+      if (this.runInAngular(() => this.flipCardObjects(hovered))) this.consume(e);
       return;
     }
 
@@ -1604,15 +1636,9 @@ export class TabletopKeyboardService {
     return changed;
   }
 
-  /** Flip card / turn over deck / coin faces; roll multi-face dice. */
-  private flipSelection(): boolean {
-    return this.flipObjects(this.shortcutTargets());
-  }
-
-  private flipObjects(objects: TabletopObject[]): boolean {
+  /** Flip card / turn over deck (F). Dice / coin use {@link rollDiceObjects} (R). */
+  private flipCardObjects(objects: TabletopObject[]): boolean {
     let flippedCard = false;
-    let rolledCoin = false;
-    let rolledDice = false;
 
     for (const object of objects) {
       if (this.isLocked(object)) continue;
@@ -1629,29 +1655,37 @@ export class TabletopKeyboardService {
         object.inverse();
         EventSystem.call('INVERSE_CARD_STACK', { identifier: object.identifier });
         flippedCard = true;
-        continue;
-      }
-
-      if (object instanceof DiceSymbol) {
-        if (!object.isVisible && !PeerCursor.myCursor?.isGMMode) continue;
-        if (object.isCoin) {
-          const faces = object.faces;
-          if (faces.length >= 2) {
-            object.face = faces[0] === object.face ? faces[1] : faces[0];
-            rolledCoin = true;
-          }
-        } else {
-          EventSystem.call('ROLL_DICE_SYMBOL', { identifier: object.identifier });
-          object.diceRoll();
-          rolledDice = true;
-        }
       }
     }
 
     if (flippedCard) SoundEffect.play(PresetSound.cardDraw);
+    return flippedCard;
+  }
+
+  /** Coin flip or multi-face dice roll (R). */
+  private rollDiceObjects(objects: DiceSymbol[]): boolean {
+    let rolledCoin = false;
+    let rolledDice = false;
+
+    for (const object of objects) {
+      if (this.isLocked(object)) continue;
+      if (!object.isVisible && !PeerCursor.myCursor?.isGMMode) continue;
+      if (object.isCoin) {
+        const faces = object.faces;
+        if (faces.length >= 2) {
+          object.face = faces[0] === object.face ? faces[1] : faces[0];
+          rolledCoin = true;
+        }
+      } else {
+        EventSystem.call('ROLL_DICE_SYMBOL', { identifier: object.identifier });
+        object.diceRoll();
+        rolledDice = true;
+      }
+    }
+
     if (rolledCoin) SoundEffect.play(PresetSound.coinToss);
     if (rolledDice) SoundEffect.play(PresetSound.diceRoll1);
-    return flippedCard || rolledCoin || rolledDice;
+    return rolledCoin || rolledDice;
   }
 
   /** GM only: hide / reveal selected tokens (owner stealth on Token when present). */

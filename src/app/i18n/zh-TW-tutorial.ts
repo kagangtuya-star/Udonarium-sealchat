@@ -25,7 +25,7 @@ Patreon：https://www.patreon.com/HKTRPG
 　　　　右鍵＝選單
 　　　　雙擊＝開啟詳情（角色／卡牌／牌堆／骰子／地形／筆記／遮罩／範圍等；反面卡對玩家不開）
 　　　　角色「下一張圖像」＝右鍵選單「切換下一張圖像」
-　　　　卡牌／牌堆：右鍵抽入手牌・派牌；F＝單卡翻面／牌堆整疊翻轉；骰子＝右鍵或 F
+　　　　卡牌／牌堆：右鍵抽入手牌・派牌；F＝單卡翻面／牌堆整疊翻轉；骰子＝右鍵或 R
 ＜路徑移動＞選取 Token 後：Ctrl＋左鍵＝加路點（可放開 Ctrl，路點仍保留）
 　　　　左鍵點新位置＝設終點並開始移動
 　　　　Space＝以目前路點開始移動
@@ -44,9 +44,9 @@ Patreon：https://www.patreon.com/HKTRPG
 　　　　Shift＋WASD＝改變面向
 　　　　Q／E＝旋轉 ±45°
 　　　　Shift＋Q／E＝±15°
-　　　　R＝重置全部角度（面向／傾角）至 0°
 　　　　PageUp／PageDown＝高度 ±1（Shift＝±0.5）
-　　　　F＝單卡翻面／牌堆整疊翻轉／硬幣或擲骰
+　　　　F＝單卡翻面／牌堆整疊翻轉
+　　　　R＝擲骰／硬幣；懸停牌堆洗牌；否則重置面向／傾角
 　　　　L＝鎖定／解鎖
 　　　　H＝顯隱選取角色（僅 GM）
 　　　　T＝集中已選物件到滑鼠位置
@@ -137,7 +137,7 @@ Patreon：https://www.patreon.com/HKTRPG
   'changelog.2026ops': `2026/08/03 操作更新
 ・桌面選取高亮；左鍵空白框選；Shift＋點／拖曳多選；右鍵拖曳平移地圖
 ・雙擊物件開啟詳情（翻面／抽牌／擲骰改右鍵選單）
-・鍵盤（選取後）：WASD 移動、Shift＋WASD 面向、Q／E 旋轉、R 重置全部角度、PageUp／Down 高度、F 翻面、L 鎖定、H 顯隱（GM）、T 集中到滑鼠、Delete、Ctrl＋C　Ctrl＋X　Ctrl＋V、Ctrl＋Z／Y
+・鍵盤（選取後）：WASD 移動、Shift＋WASD 面向、Q／E 旋轉、R 擲骰／洗牌／重置面向、PageUp／Down 高度、F 翻面、L 鎖定、H 顯隱（GM）、T 集中到滑鼠、Delete、Ctrl＋C　Ctrl＋X　Ctrl＋V、Ctrl＋Z／Y
 ・聊天：1–9 切換可檢視頻道（並開啟聊天；不需選取物件）
 ・C＝清空桌面視窗；右鍵選單顯示快捷鍵提示（T）（L）等
 ・[ / ] 調整前後層；按住 Alt＝外框標示桌上物件（地圖遮罩下僅 GM 可見）；Alt＋滾輪（選取＝面向 3°／無選取＝視角左右）；Alt＋Shift＋滾輪（選取＝roll／無選取＝俯仰）；Ctrl＋Shift＋滾輪 45°
