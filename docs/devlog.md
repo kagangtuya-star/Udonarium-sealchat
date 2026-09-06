@@ -271,3 +271,12 @@ Hover Caption（名→text）；Ctrl／⌘ Object Image Preview（釘選、雙�
 反面對玩家不開詳情；詳情面板錨在畫面咭旁
 
 ---
+
+Udonarium烏冬ユドナリウム開發日誌33
+Print & Play・街景・房間密碼・快捷鍵（2026/09/03–07）
+PDF 牌面：頁面範圍、自動裁切、預覽縮放／平移／磁吸邊
+街景：Open3Dhk／PLATEAU 背景匯入＋HUD；香港比例；GSI 航照地面
+角色密碼保留；FILES 早期進度／地圖圖優先；取消選圖不洗 Token 圖
+鎖定不可合併；骰子改 R；選單標示 Ctrl＋C／X／V
+
+---

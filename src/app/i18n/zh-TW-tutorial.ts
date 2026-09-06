@@ -249,6 +249,13 @@ Patreon：https://www.patreon.com/HKTRPG
 ・Hover **Card Caption**：先顯示名稱，約 0.5 秒後顯示 text（錨在畫面咭旁）；反面對玩家不開詳情（防劇透）
 ・**Object Image Preview**：Ctrl／⌘＋懸停開大圖（縮放／釘選；可多釘）；雙擊預覽可開詳情面板
 ・桌面面板預設開在視窗中央略偏上；右鍵選單仍貼游標`,
+  'changelog.2026sepEarly': `2026/09/03–07 Print & Play・街景・房間密碼・快捷鍵
+・**Print & Play／牌面匯入**：PDF 可指定頁面範圍、自動裁切；裁切預覽支援縮放／平移／磁吸邊，手動邊距與自動偵測並存
+・**街景匯入**：Open3Dhk／PLATEAU 可背景匯入＋進度 HUD；香港比例與 bake 群組；GSI 航照地面對齊；樓地板邊緣裁切
+・**房間角色密碼**：建立／開啟房間後保留玩家角色密碼；離房或部分寫入不再清掉資料夾備份密鑰
+・**檔案同步**：入房早期顯示 FILES 進度、地圖圖優先下載；取消選圖不再清空 Token 圖像
+・**手牌／合併**：鎖定的牌堆／單卡不可作為合併目標；卡預覽文字面板、TTS 表預覽、圖片筆記貼底改善
+・**快捷鍵**：右鍵選單標示 Ctrl＋C／X／V（暫存 Token 為 Ctrl＋Shift＋V）；骰子／硬幣改按 **R** 重擲（**F** 仍翻單卡／整疊牌堆）`,
   'changelog.links': `本站：https://z01.hktrpg.com
 教學：https://wiki.hktrpg.com/TRPG/Udonarium烏冬教學
 Discord：https://support.hktrpg.com

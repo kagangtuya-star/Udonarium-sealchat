@@ -249,6 +249,13 @@ Upgraded to 1.13.2`,
 ・Hover **Card Caption**: name first, text after ~0.5s (beside the painted card); face-down cards don’t open detail for players (no spoilers)
 ・**Object Image Preview**: Ctrl／⌘＋hover for zoom／pin (multi-pin); double-click preview opens the detail sheet
 ・Desktop panels open near viewport center; context menus stay cursor-anchored`,
+  'changelog.2026sepEarly': `2026/09/03–07 Print & Play・streetscape・room passwords・shortcuts
+・**Print & Play／card-sheet import**: PDF page range + auto-trim; trim preview with zoom／pan／magnetic edges; manual insets kept alongside detection
+・**Streetscape import**: Open3Dhk／PLATEAU background jobs + progress HUD; HK scale and bake groups; GSI aerial floor align; floor-edge crop
+・**Room role passwords**: keep player role password after create／open; leave／partial auth writes no longer wipe folder-backup secrets
+・**File sync**: early FILES progress on join, map images first; canceling the file picker no longer clears Token images
+・**Hand／merge**: locked stacks／cards refuse merge targets; card preview text panel, TTS sheet preview, image-note footing polish
+・**Shortcuts**: context menus show Ctrl＋C／X／V (temp Token = Ctrl＋Shift＋V); dice／coin re-roll is **R** (**F** still flips a card／turns a deck)`,
   'changelog.links': `Site: https://z01.hktrpg.com
 Guide: https://wiki.hktrpg.com/TRPG/Udonarium烏冬教學
 Discord: https://support.hktrpg.com

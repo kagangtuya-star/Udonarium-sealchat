@@ -249,6 +249,13 @@ Patreon：https://www.patreon.com/HKTRPG
 ・Hover **Card Caption**：先に名前、約 0.5 秒後に text（描画カード横）；裏向きはプレイヤーに詳細を開かない（ネタバレ防止）
 ・**Object Image Preview**：Ctrl／⌘＋ホバーで拡大／ピン（複数可）；プレビューダブルクリックで詳細
 ・デスクトップパネルは画面中央やや上に開く；右クリックメニューはカーソル位置`,
+  'changelog.2026sepEarly': `2026/09/03–07 Print & Play・街並み・部屋パスワード・ショートカット
+・**Print & Play／カードシート取込**：PDF のページ範囲＋自動トリム；トリムプレビューは拡大／パン／磁着辺、手動余白と検出を併用
+・**街並み取込**：Open3Dhk／PLATEAU をバックグラウンド＋進捗 HUD；香港スケールと bake グループ；GSI 航空写真の床合わせ；床縁クロップ
+・**部屋ロールパスワード**：作成／開室後もプレイヤー用ロールパスワードを保持；退出／部分書き込みでフォルダバックアップ秘密を消さない
+・**ファイル同期**：入室直後から FILES 進捗、地図画像を優先；ファイル選択キャンセルで Token 画像を消さない
+・**手札／マージ**：ロック中の山／カードはマージ先にならない；カードプレビュー文字、TTS シート、画像メモの足元を改善
+・**ショートカット**：右クリックに Ctrl＋C／X／V（仮 Token は Ctrl＋Shift＋V）；ダイス／コイン再ロールは **R**（**F** はカード裏表／山ごと裏返しのまま）`,
   'changelog.links': `サイト：https://z01.hktrpg.com
 ガイド：https://wiki.hktrpg.com/TRPG/Udonarium烏冬教學
 Discord：https://support.hktrpg.com
