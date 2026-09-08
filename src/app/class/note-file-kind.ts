@@ -1,17 +1,18 @@
 /** Classify files for shared-note import / tabletop drop. */
 
+import { MimeType } from '@udonarium/core/file-storage/mime-type';
+
 export type NoteFileKind = 'image' | 'video' | 'pdf' | 'text';
 
 /** File picker accept string for note inventory / settings import. */
 export const NOTE_FILE_ACCEPT =
-  'image/*,video/*,application/pdf,text/plain,text/*,application/json,' +
+  'image/*,application/pdf,text/plain,text/*,application/json,' +
+  MimeType.VIDEO_FILE_ACCEPT + ',' +
   '.png,.jpg,.jpeg,.jfif,.gif,.webp,.bmp,.svg,.avif,.apng,.ico,' +
-  '.mp4,.webm,.mov,.m4v,.ogv,' +
   '.pdf,' +
   '.txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.yml,.yaml,.log,.ini,.conf,.rst,.tex,.rtf';
 
 const IMAGE_EXT = /\.(png|jpe?g|jfif|gif|webp|bmp|svg|avif|apng|ico)$/i;
-const VIDEO_EXT = /\.(mp4|webm|mov|m4v|ogv)$/i;
 const TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|html?|xml|ya?ml|log|ini|conf|rst|tex|rtf)$/i;
 
 /**
@@ -25,7 +26,7 @@ export function classifyNoteFile(file: File | null | undefined): NoteFileKind | 
 
   if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
 
-  if (type.indexOf('video/') === 0 || VIDEO_EXT.test(name)) return 'video';
+  if (MimeType.isVideoFile(file)) return 'video';
 
   if (type.indexOf('image/') === 0 || IMAGE_EXT.test(name)) return 'image';
 

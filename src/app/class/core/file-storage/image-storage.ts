@@ -2,8 +2,12 @@ import { EventSystem } from '../system';
 import { ResettableTimeout } from '../system/util/resettable-timeout';
 import { catalogByteSize } from './file-transfer-scheduler';
 import { ImageContext, ImageFile, ImageState } from './image-file';
-import { getOrHydrateUrlBacked } from './media-storage-helpers';
-import { isContentHashIdentifier, mediaHashFromName } from 'service/folder-backup-layout';
+import {
+  addPackedByContentHash,
+  deleteMediaFromHash,
+  getOrHydrateUrlBacked,
+  insertOrUpdateMediaFile,
+} from './media-storage-helpers';
 
 export type CatalogItem = {
   readonly identifier: string;
@@ -50,12 +54,14 @@ export class ImageStorage {
 
   /** Restore `<sha256>.ext` from ZIP / folder media under the filename hash. */
   async addPackedAsync(file: File): Promise<ImageFile> {
-    const hash = mediaHashFromName(file.name);
-    if (!isContentHashIdentifier(hash)) return this.addAsync(file);
-    const existing = this.get(hash);
-    if (existing && existing.state >= ImageState.COMPLETE) return existing;
-    const image = await ImageFile.createPackedAsync(file, hash);
-    return this._add(image);
+    return addPackedByContentHash({
+      file,
+      completeState: ImageState.COMPLETE,
+      get: id => this.get(id),
+      addAsync: f => this.addAsync(f),
+      createPacked: (f, hash) => ImageFile.createPackedAsync(f, hash),
+      store: image => this._add(image),
+    });
   }
 
   add(url: string): ImageFile
@@ -75,11 +81,13 @@ export class ImageStorage {
   }
 
   private _add(image: ImageFile): ImageFile {
-    // URL assets (./assets/...) are not P2P-synced; only blob-complete entries.
-    if (image.state === ImageState.COMPLETE) this.lazySynchronize(100);
-    if (this.update(image)) return this.imageHash[image.identifier];
-    this.imageHash[image.identifier] = image;
-    return image;
+    return insertOrUpdateMediaFile({
+      hash: this.imageHash,
+      file: image,
+      completeState: ImageState.COMPLETE,
+      lazySynchronize: ms => this.lazySynchronize(ms),
+      tryUpdate: file => this.update(file),
+    });
   }
 
   private update(image: ImageFile): boolean
@@ -100,13 +108,7 @@ export class ImageStorage {
   }
 
   delete(identifier: string): boolean {
-    let deleteImage: ImageFile = this.imageHash[identifier];
-    if (deleteImage) {
-      deleteImage.destroy();
-      delete this.imageHash[identifier];
-      return true;
-    }
-    return false;
+    return deleteMediaFromHash(this.imageHash, identifier);
   }
 
   get(identifier: string): ImageFile {

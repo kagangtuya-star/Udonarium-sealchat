@@ -13,8 +13,21 @@ import { ImageTag } from '@udonarium/image-tag';
 import { ObjectStore } from '@udonarium/core/synchronize-object/object-store';
 import { TextNote } from '@udonarium/text-note';
 import { Network } from '@udonarium/core/system';
+import { AudioLibrary } from '@udonarium/audio-library';
+import { CutIn } from '@udonarium/cut-in';
+import { Jukebox } from '@udonarium/Jukebox';
 import { Card } from '@udonarium/card';
 import { CardStack } from '@udonarium/card-stack';
+import { ChatMessage } from '@udonarium/chat-message';
+import { DiceSymbol } from '@udonarium/dice-symbol';
+import { GameCharacter } from '@udonarium/game-character';
+import { GameTable } from '@udonarium/game-table';
+import { GameTableMask } from '@udonarium/game-table-mask';
+import { PeerCursor } from '@udonarium/peer-cursor';
+import { ScenePreset } from '@udonarium/scene-preset';
+import { Terrain } from '@udonarium/terrain';
+import { CombatTracker } from '@udonarium/table-fx/combat-tracker';
+import { TableTimerList } from '@udonarium/table-fx/table-timer';
 
 import { FolderBackupService } from './folder-backup.service';
 import { isContentHashIdentifier, isMediaFileName, mediaHashFromName } from './folder-backup-layout';
@@ -90,6 +103,7 @@ export class FolderMediaHydrator {
         if (handle.kind !== 'file') continue;
         if (!isMediaFileName(name)) continue;
         const hash = mediaHashFromName(name);
+        if (!isContentHashIdentifier(hash)) continue;
         if (!map.has(hash)) map.set(hash, name);
       }
     } catch (e) {
@@ -122,9 +136,14 @@ export class FolderMediaHydrator {
     }
   }
 
-  private async hydrateInner(kind: FileResourceKind, identifier: string): Promise<boolean> {
-    if (this.isComplete(kind, identifier)) return true;
+  private isCompleteAny(identifier: string): boolean {
+    return this.isComplete('image', identifier)
+      || this.isComplete('audio', identifier)
+      || this.isComplete('pdf', identifier)
+      || this.isComplete('video', identifier);
+  }
 
+  private async importMediaByHash(identifier: string): Promise<boolean> {
     const fileName = await this.findFileName(identifier);
     if (!fileName) return false;
 
@@ -140,11 +159,49 @@ export class FolderMediaHydrator {
       console.warn('FolderMediaHydrator hydrate failed', fileName, e);
       return false;
     }
+    return true;
+  }
 
+  private async hydrateInner(kind: FileResourceKind, identifier: string): Promise<boolean> {
+    if (this.isComplete(kind, identifier)) return true;
+    if (!await this.importMediaByHash(identifier)) return false;
     return this.isComplete(kind, identifier);
   }
 
+  private async hydrateFromDisk(identifier: string): Promise<boolean> {
+    const id = (identifier || '').toLowerCase();
+    if (!id || !isContentHashIdentifier(id) || !this.canHydrate()) return false;
+    if (this.isCompleteAny(id)) return true;
+
+    const key = `disk:${id}`;
+    const pending = this.inFlight.get(key);
+    if (pending) return pending;
+
+    const work = (async () => {
+      if (this.isCompleteAny(id)) return true;
+      if (!await this.importMediaByHash(id)) return false;
+      return this.isCompleteAny(id);
+    })();
+    this.inFlight.set(key, work);
+    try {
+      return await work;
+    } finally {
+      this.inFlight.delete(key);
+    }
+  }
+
   async hydrateMissing(kind: FileResourceKind, identifiers: string[]): Promise<void> {
+    await this.hydratePool(identifiers, id => this.hydrate(kind, id));
+  }
+
+  private async hydrateMissingFromDisk(identifiers: string[]): Promise<void> {
+    await this.hydratePool(identifiers, id => this.hydrateFromDisk(id));
+  }
+
+  private async hydratePool(
+    identifiers: string[],
+    hydrateOne: (id: string) => Promise<boolean>,
+  ): Promise<void> {
     const unique = [...new Set(
       identifiers.filter(id => isContentHashIdentifier(id)).map(id => id.toLowerCase()),
     )];
@@ -154,7 +211,7 @@ export class FolderMediaHydrator {
     const worker = async () => {
       while (cursor < unique.length) {
         const id = unique[cursor++];
-        await this.hydrate(kind, id);
+        await hydrateOne(id);
       }
     };
     const workers = Math.min(MAX_CONCURRENT_HYDRATE, unique.length);
@@ -193,18 +250,13 @@ export class FolderMediaHydrator {
     const video = new Set<string>();
     const audio = new Set<string>();
 
-    const addImage = (id: string) => {
-      if (isContentHashIdentifier(id) && !this.isComplete('image', id)) image.add(id.toLowerCase());
+    const addMissing = (kind: FileResourceKind, into: Set<string>) => (id: string) => {
+      if (isContentHashIdentifier(id) && !this.isComplete(kind, id)) into.add(id.toLowerCase());
     };
-    const addPdf = (id: string) => {
-      if (isContentHashIdentifier(id) && !this.isComplete('pdf', id)) pdf.add(id.toLowerCase());
-    };
-    const addVideo = (id: string) => {
-      if (isContentHashIdentifier(id) && !this.isComplete('video', id)) video.add(id.toLowerCase());
-    };
-    const addAudio = (id: string) => {
-      if (isContentHashIdentifier(id) && !this.isComplete('audio', id)) audio.add(id.toLowerCase());
-    };
+    const addImage = addMissing('image', image);
+    const addPdf = addMissing('pdf', pdf);
+    const addVideo = addMissing('video', video);
+    const addAudio = addMissing('audio', audio);
 
     const addImageIdsFromObject = (obj: { imageDataElement?: { children?: { value?: unknown }[] } }) => {
       const children = obj?.imageDataElement?.children;
@@ -213,9 +265,20 @@ export class FolderMediaHydrator {
         addImage(String(el?.value ?? ''));
       }
     };
+    const absorbHashes = (text: string, add: (id: string) => void) => {
+      if (!text) return;
+      const re = /[a-f0-9]{64}/gi;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) add(m[0]);
+    };
 
     for (const tag of ObjectStore.instance.getObjects(ImageTag)) {
       addImage(tag.imageIdentifier);
+    }
+    for (const table of ObjectStore.instance.getObjects(GameTable)) {
+      addImage(table.imageIdentifier);
+      addImage(table.backgroundImageIdentifier);
+      addImage(table.backgroundImageIdentifier2);
     }
     for (const note of ObjectStore.instance.getObjects(TextNote)) {
       addPdf(note.pdfIdentifier);
@@ -227,6 +290,28 @@ export class FolderMediaHydrator {
     }
     for (const stack of ObjectStore.instance.getObjects(CardStack)) {
       addImageIdsFromObject(stack);
+    }
+    for (const ch of ObjectStore.instance.getObjects(GameCharacter)) {
+      addImageIdsFromObject(ch);
+      addImage(ch.chatDialogFaceIconIdentifier);
+    }
+    for (const terrain of ObjectStore.instance.getObjects(Terrain)) {
+      addImageIdsFromObject(terrain);
+      absorbHashes(terrain.bakeCropJson, addImage);
+    }
+    for (const dice of ObjectStore.instance.getObjects(DiceSymbol)) {
+      addImageIdsFromObject(dice);
+    }
+    for (const mask of ObjectStore.instance.getObjects(GameTableMask)) {
+      addImageIdsFromObject(mask);
+    }
+    for (const msg of ObjectStore.instance.getObjects(ChatMessage)) {
+      addImage(msg.imageIdentifier);
+      addImage(msg.toImageIdentifier);
+      for (const id of (msg.attachedImageIdentifiers || '').trim().split(/\s+/)) addImage(id);
+    }
+    for (const cursor of ObjectStore.instance.getObjects(PeerCursor)) {
+      addImage(cursor.imageIdentifier);
     }
     for (const img of ImageStorage.instance.images) {
       if (img?.identifier) addImage(img.identifier);
@@ -240,6 +325,35 @@ export class FolderMediaHydrator {
     for (const a of AudioStorage.instance.audios) {
       if (a?.identifier) addAudio(a.identifier);
     }
+    const library = AudioLibrary.instance?.data;
+    if (library) {
+      for (const id of Object.keys(library.membership || {})) addAudio(id);
+      for (const list of Object.values(library.orders || {})) {
+        if (!Array.isArray(list)) continue;
+        for (const id of list) addAudio(id);
+      }
+    }
+    const jukebox = Jukebox.instance;
+    if (jukebox) {
+      addAudio(jukebox.audioIdentifier);
+      for (const track of jukebox.tracks || []) {
+        addAudio(track.audioIdentifier);
+        for (const id of track.queue || []) addAudio(id);
+      }
+      for (const pad of jukebox.soundboard || []) addAudio(pad.audioIdentifier);
+    }
+    for (const cutIn of ObjectStore.instance.getObjects(CutIn)) {
+      addAudio(cutIn.audioIdentifier);
+      addImage(cutIn.imageIdentifier);
+    }
+    absorbHashes(CombatTracker.instance?.encountersJson, addImage);
+    for (const preset of ObjectStore.instance.getObjects(ScenePreset)) {
+      absorbHashes(preset.tabletopJson, addImage);
+      absorbHashes(preset.tracksJson, addAudio);
+    }
+    for (const timer of TableTimerList.instance?.timers || []) {
+      absorbHashes(timer.onZeroActionsJson, addAudio);
+    }
 
     return {
       image: Array.from(image),
@@ -251,11 +365,11 @@ export class FolderMediaHydrator {
 
   private async hydrateRoomReferencedMediaInner(): Promise<void> {
     const refs = this.collectRoomReferenced();
-    await Promise.all([
-      this.hydrateMissing('image', refs.image),
-      this.hydrateMissing('pdf', refs.pdf),
-      this.hydrateMissing('video', refs.video),
-      this.hydrateMissing('audio', refs.audio),
+    await this.hydrateMissingFromDisk([
+      ...refs.image,
+      ...refs.pdf,
+      ...refs.video,
+      ...refs.audio,
     ]);
   }
 }

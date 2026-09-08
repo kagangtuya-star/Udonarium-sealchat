@@ -3,6 +3,7 @@ import { FileArchiver } from './file-archiver';
 import { AudioStorage } from './audio-storage';
 import { MimeType } from './mime-type';
 import { VideoStorage } from './video-storage';
+import { isMediaFileName, packedMediaFileName, toPackedAudioFile } from 'service/folder-backup-layout';
 
 function clearAudio() {
   for (const a of [...AudioStorage.instance.audios]) {
@@ -22,10 +23,8 @@ async function roundTrip(file: File): Promise<{ id: string; reloadType: string; 
   const original = AudioStorage.instance.audios[0];
   AudioLibrary.instance.ensureListed(original.identifier);
 
-  const ext = MimeType.audioExtension(original.blob.type || file.type || 'audio/mpeg');
-  const type = MimeType.audioMimeForExtension(ext);
-  const savedName = original.identifier + '.' + ext;
-  const saved = new File([original.blob], savedName, { type });
+  const saved = toPackedAudioFile(original.blob, original.identifier);
+  const savedName = saved.name;
 
   clearAudio();
   clearVideo();
@@ -56,7 +55,7 @@ describe('audio ZIP / folder-backup round-trip', () => {
     clearVideo();
   });
 
-  it('round-trips MP3 / WAV / OGG / M4A / FLAC / Opus / WebA', async () => {
+  it('round-trips common audio formats including AIFF / WMA / OGA', async () => {
     const samples: File[] = [
       new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00])], 'a.mp3', { type: 'audio/mpeg' }),
       new File([new Uint8Array([0x52, 0x49, 0x46, 0x46])], 'b.wav', { type: 'audio/wav' }),
@@ -65,6 +64,9 @@ describe('audio ZIP / folder-backup round-trip', () => {
       new File([new Uint8Array([0x66, 0x4c, 0x61, 0x43])], 'e.flac', { type: 'audio/flac' }),
       new File([new Uint8Array([0x4f, 0x70, 0x75, 0x73])], 'f.opus', { type: 'audio/opus' }),
       new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])], 'g.weba', { type: 'audio/webm' }),
+      new File([new Uint8Array([0x46, 0x4f, 0x52, 0x4d])], 'h.aiff', { type: 'audio/aiff' }),
+      new File([new Uint8Array([0x30, 0x26, 0xb2, 0x75])], 'i.wma', { type: 'audio/x-ms-wma' }),
+      new File([new Uint8Array([0x4f, 0x67, 0x67, 0x53])], 'j.oga', { type: 'audio/ogg' }),
     ];
     for (const sample of samples) {
       clearAudio();
@@ -92,6 +94,10 @@ describe('audio ZIP / folder-backup round-trip', () => {
       new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])], 'clip.webm', { type: 'video/webm' }),
       new File([new Uint8Array([0x00, 0x00, 0x01, 0xba])], 'movie.mpeg', { type: 'video/mpeg' }),
       new File([new Uint8Array([0x00, 0x00, 0x01, 0xba])], 'movie.mpg', { type: 'video/mpeg' }),
+      new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3])], 'clip.mkv', { type: 'video/x-matroska' }),
+      new File([new Uint8Array([0x52, 0x49, 0x46, 0x46])], 'clip.avi', { type: 'video/x-msvideo' }),
+      new File([new Uint8Array([0x00, 0x00, 0x00, 0x14])], 'clip.mov', { type: 'video/quicktime' }),
+      new File([new Uint8Array([0x00, 0x00, 0x00, 0x18])], 'clip.3gp', { type: '' }),
     ];
     for (const video of videos) {
       clearAudio();
@@ -131,8 +137,8 @@ describe('audio ZIP / folder-backup round-trip', () => {
     }
 
     try {
-      const packed = new File([blob], `${id}.mp3`, { type: 'audio/mpeg' });
-      expect(MimeType.isRoomPackedAudioFileName(packed.name)).toBeTrue();
+      const packed = new File([blob], packedMediaFileName(id, 'mp3'), { type: 'audio/mpeg' });
+      expect(isMediaFileName(packed.name)).toBeTrue();
       await FileArchiver.instance.load([packed]);
 
       expect(resolveCalls).withContext('must not open import-name flow').toBe(0);
@@ -141,5 +147,33 @@ describe('audio ZIP / folder-backup round-trip', () => {
     } finally {
       if (prev && originalResolve) prev.resolveDisplayName = originalResolve;
     }
+  });
+
+  it('restores nested media/<sha256>.mpeg as audio under the content-hash identifier', async () => {
+    const bytes = new Uint8Array([0xff, 0xfb, 0x90, 0x00, 0xaa, 0xbb]);
+    const hash = 'b'.repeat(64);
+    const nested = new File([bytes], `media/${hash}.mpeg`, { type: 'video/mpeg' });
+    await FileArchiver.instance.load([nested]);
+
+    expect(VideoStorage.instance.videos.length).toBe(0);
+    expect(AudioStorage.instance.get(hash)).toBeTruthy();
+    expect(AudioStorage.instance.audios.some(a => a.identifier.startsWith('media/'))).toBeFalse();
+  });
+
+  it('restores nested media/<sha256>.mp3 with the content-hash identifier', async () => {
+    const bytes = new Uint8Array([0xff, 0xfb, 0x90, 0x00, 0xaa, 0xbb]);
+    const uploaded = new File([bytes], 'theme.mp3', { type: 'audio/mpeg' });
+    await FileArchiver.instance.load([uploaded]);
+    const id = AudioStorage.instance.audios[0].identifier;
+    const blob = AudioStorage.instance.get(id).blob;
+    clearAudio();
+    clearVideo();
+
+    const nested = new File([blob], `media/${id}.mp3`, { type: MimeType.type(`${id}.mp3`) });
+    await FileArchiver.instance.load([nested]);
+
+    expect(VideoStorage.instance.videos.length).toBe(0);
+    expect(AudioStorage.instance.get(id)).toBeTruthy();
+    expect(AudioStorage.instance.audios.some(a => a.identifier.startsWith('media/'))).toBeFalse();
   });
 });

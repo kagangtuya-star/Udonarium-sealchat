@@ -1,5 +1,7 @@
 /** Folder auto-backup layout (v2): shared media + per-room state directories. */
 
+import { MimeType } from '@udonarium/core/file-storage/mime-type';
+
 export const FOLDER_BACKUP_FORMAT_VERSION = 2;
 
 export const MEDIA_DIR = 'media';
@@ -79,16 +81,38 @@ export interface FolderBackupRoomMetaV2 {
   };
 }
 
-/** Media blob names: content-hash filename used in room ZIPs. */
+/** Media blob names: "<sha256>.ext" (same as card / token images). */
 export function isMediaFileName(name: string): boolean {
-  if (!name || STATE_FILE_NAMES.has(name)) return false;
-  if (name === MANIFEST_FILE || name === PREVIEW_FILE) return false;
-  return /^[a-f0-9]{64}\.[A-Za-z0-9]+$/i.test(name);
+  const base = (name || '').split(/[\\/]/).pop() || '';
+  if (!base || STATE_FILE_NAMES.has(base)) return false;
+  if (base === MANIFEST_FILE || base === PREVIEW_FILE) return false;
+  return /^[a-f0-9]{64}\.[A-Za-z0-9]+$/i.test(base);
 }
 
 export function mediaHashFromName(name: string): string {
-  const i = name.indexOf('.');
-  return i > 0 ? name.slice(0, i).toLowerCase() : name.toLowerCase();
+  const base = (name || '').split(/[\\/]/).pop() || '';
+  const i = base.lastIndexOf('.');
+  return i > 0 ? base.slice(0, i).toLowerCase() : base.toLowerCase();
+}
+
+/** ZIP / folder media blob name for cards, tokens, audio, PDF, and video. */
+export function packedMediaFileName(hash: string, ext: string): string {
+  const e = (ext || 'bin').replace(/^\./, '');
+  return `${(hash || '').toLowerCase()}.${e}`;
+}
+
+export function toPackedMediaFile(blob: Blob, identifier: string, ext: string, type: string): File {
+  return new File([blob], packedMediaFileName(identifier, ext), { type });
+}
+
+export function toPackedAudioFile(blob: Blob, identifier: string): File {
+  const ext = MimeType.audioExtension(blob.type || 'audio/mpeg');
+  return toPackedMediaFile(blob, identifier, ext, MimeType.audioMimeForExtension(ext));
+}
+
+export function toPackedVideoFile(blob: Blob, identifier: string): File {
+  const ext = MimeType.videoExtension(blob.type || 'video/mp4');
+  return toPackedMediaFile(blob, identifier, ext, MimeType.videoMimeForExtension(ext));
 }
 
 /** Catalog / media identifiers: 64-char content SHA-256 hex. */
@@ -157,14 +181,17 @@ export function unionManifestMedia(
 }
 
 /**
- * Collect content-hash media ids referenced by room XML / tag attributes.
+ * Collect content-hash media ids referenced by room XML / tag attributes /
+ * jukebox JSON (audioIdentifier, fly_audioLibrary dataJson).
  * Used to pull orphaned media/ files that fell out of manifest.media.
  */
 export function collectReferencedMediaHashes(...texts: string[]): string[] {
   const found = new Set<string>();
-  const attrRe = /(?:pdfIdentifier|videoIdentifier|imageIdentifier|toImageIdentifier|backgroundImageIdentifier2?|currentValue)\s*[=:]\s*["']?([a-f0-9]{64})/gi;
+  const attrRe = /(?:pdfIdentifier|videoIdentifier|audioIdentifier|imageIdentifier|toImageIdentifier|backgroundImageIdentifier2?|currentValue)\s*[=:]\s*["']?([a-f0-9]{64})/gi;
   const attachedRe = /attachedImageIdentifiers\s*=\s*["']([^"']+)["']/gi;
   const typeImageRe = /type\s*=\s*["']image["'][^>]*>\s*([a-f0-9]{64})\s*</gi;
+  // fly_audioLibrary.xml / fly_jukebox.xml keep ids inside JSON attributes (dataJson, tracksJson).
+  const hashTokenRe = /[a-f0-9]{64}/gi;
   for (const text of texts) {
     if (!text) continue;
     let m: RegExpExecArray | null;
@@ -178,6 +205,8 @@ export function collectReferencedMediaHashes(...texts: string[]): string[] {
     }
     typeImageRe.lastIndex = 0;
     while ((m = typeImageRe.exec(text)) !== null) found.add(m[1].toLowerCase());
+    hashTokenRe.lastIndex = 0;
+    while ((m = hashTokenRe.exec(text)) !== null) found.add(m[0].toLowerCase());
   }
   return Array.from(found);
 }

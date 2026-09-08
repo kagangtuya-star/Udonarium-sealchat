@@ -1,4 +1,5 @@
 import { MimeType } from './mime-type';
+import { isMediaFileName } from 'service/folder-backup-layout';
 
 describe('MimeType audio packing / reload safety', () => {
   const colliding = ['mpeg', 'mpg', 'mp4', 'webm', 'mov', 'm4v'];
@@ -16,12 +17,20 @@ describe('MimeType audio packing / reload safety', () => {
     expect(MimeType.audioExtension('audio/flac')).toBe('flac');
     expect(MimeType.audioExtension('audio/webm')).toBe('weba');
     expect(MimeType.audioExtension('audio/webm;codecs=opus')).toBe('weba');
+    expect(MimeType.audioExtension('audio/aiff')).toBe('aiff');
+    expect(MimeType.audioExtension('audio/x-aiff')).toBe('aiff');
+    expect(MimeType.audioExtension('audio/x-ms-wma')).toBe('wma');
+    expect(MimeType.audioExtension('audio/midi')).toBe('mid');
+    expect(MimeType.audioExtension('audio/amr')).toBe('amr');
+    expect(MimeType.audioExtension('audio/x-caf')).toBe('caf');
+    expect(MimeType.audioExtension('audio/x-matroska')).toBe('mka');
   });
 
   it('never packs audio as a video-colliding extension', () => {
     const mimes = [
       'audio/mpeg', 'audio/mp3', 'audio/mp4', 'audio/webm', 'audio/ogg',
       'audio/wav', 'audio/flac', 'audio/aac', 'audio/opus', 'audio/x-m4a',
+      'audio/aiff', 'audio/x-ms-wma', 'audio/midi',
     ];
     for (const mime of mimes) {
       const ext = MimeType.audioExtension(mime);
@@ -43,6 +52,10 @@ describe('MimeType audio packing / reload safety', () => {
     expect(MimeType.isAudioFile({ type: '', name: 'clip.flac' })).toBeTrue();
     expect(MimeType.isAudioFile({ type: '', name: 'clip.opus' })).toBeTrue();
     expect(MimeType.isAudioFile({ type: '', name: 'clip.weba' })).toBeTrue();
+    expect(MimeType.isAudioFile({ type: '', name: 'clip.aiff' })).toBeTrue();
+    expect(MimeType.isAudioFile({ type: '', name: 'clip.wma' })).toBeTrue();
+    expect(MimeType.isAudioFile({ type: '', name: 'clip.mid' })).toBeTrue();
+    expect(MimeType.isAudioFile({ type: '', name: 'clip.mka' })).toBeTrue();
     expect(MimeType.isAudioFile({
       type: 'video/mpeg',
       name: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mpeg',
@@ -63,10 +76,10 @@ describe('MimeType audio packing / reload safety', () => {
     )).toBeTrue();
   });
 
-  it('detects room-packed hash media names', () => {
-    expect(MimeType.isRoomPackedAudioFileName(
+  it('detects packed hash media names via the shared layout helper', () => {
+    expect(isMediaFileName(
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.mp3'
     )).toBeTrue();
-    expect(MimeType.isRoomPackedAudioFileName('battle-theme.mp3')).toBeFalse();
+    expect(isMediaFileName('battle-theme.mp3')).toBeFalse();
   });
 });

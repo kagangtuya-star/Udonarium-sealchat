@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Input, OnChanges
 import { EventSystem, Network } from '@udonarium/core/system';
 import { ImageStorage } from '@udonarium/core/file-storage/image-storage';
 import { PdfStorage } from '@udonarium/core/file-storage/pdf-storage';
+import { MimeType } from '@udonarium/core/file-storage/mime-type';
 import { VideoStorage } from '@udonarium/core/file-storage/video-storage';
 import { classifyNoteFile, NOTE_FILE_ACCEPT } from '@udonarium/note-file-kind';
 import { PeerCursor } from '@udonarium/peer-cursor';
@@ -252,7 +253,7 @@ export class NoteSettingsComponent implements OnInit, OnChanges, OnDestroy {
     if (!this.note || this.GuestMode()) return;
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v';
+    input.accept = MimeType.VIDEO_FILE_ACCEPT;
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;

@@ -356,7 +356,7 @@
             </button>
             <label class="jb-icon-act jb-file-btn" [title]="('jukebox.dropMusic' | i18n) + ' · ' + ('jukebox.maxFileSize' | i18n)">
               <i class="material-icons" aria-hidden="true">upload_file</i>
-              <input type="file" hidden (change)="handleFolderFileSelect($event, '')" multiple accept="audio/*" />
+              <input type="file" hidden (change)="handleFolderFileSelect($event, '')" multiple [attr.accept]="audioFileAccept" />
             </label>
             <button
               type="button"
@@ -424,7 +424,7 @@
             </button>
             <label class="jb-icon-act jb-file-btn" [title]="('jukebox.dropMusic' | i18n) + ' · ' + ('jukebox.maxFileSize' | i18n)">
               <i class="material-icons" aria-hidden="true">upload_file</i>
-              <input type="file" hidden (change)="handleFolderFileSelect($event, folder.id)" multiple accept="audio/*" />
+              <input type="file" hidden (change)="handleFolderFileSelect($event, folder.id)" multiple [attr.accept]="audioFileAccept" />
             </label>
             <button
               type="button"

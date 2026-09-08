@@ -55,6 +55,10 @@ import {
   STATE_ZIP_FILE,
   isMediaFileName,
   mediaHashFromName,
+  packedMediaFileName,
+  toPackedMediaFile,
+  toPackedAudioFile,
+  toPackedVideoFile,
   computeStateFingerprint,
   sha256Hex,
   unionManifestMedia,
@@ -339,9 +343,7 @@ export class SaveDataService {
       for (const audio of AudioStorage.instance.audios) {
         if (audio.isHidden) continue;
         if (audio.state === AudioState.COMPLETE && audio.blob) {
-          const ext = MimeType.audioExtension(audio.blob.type || 'audio/mpeg');
-          const type = MimeType.audioMimeForExtension(ext);
-          files.push(new File([audio.blob], audio.identifier + '.' + ext, { type }));
+          files.push(toPackedAudioFile(audio.blob, audio.identifier));
         } else if (audio.state === AudioState.URL && StringUtil.validUrl(audio.url)) {
           urlAudioManifest.push({
             identifier: audio.identifier,
@@ -365,7 +367,7 @@ export class SaveDataService {
     for (const id of pdfIds) {
       const pdf = PdfStorage.instance.get(id);
       if (pdf && pdf.state === PdfState.COMPLETE && pdf.blob) {
-        files.push(new File([pdf.blob], pdf.identifier + '.pdf', { type: 'application/pdf' }));
+        files.push(toPackedMediaFile(pdf.blob, pdf.identifier, 'pdf', 'application/pdf'));
       }
     }
 
@@ -379,8 +381,7 @@ export class SaveDataService {
     for (const id of videoIds) {
       const video = VideoStorage.instance.get(id);
       if (video && video.state === VideoState.COMPLETE && video.blob) {
-        const ext = MimeType.extension(video.blob.type) || 'mp4';
-        files.push(new File([video.blob], video.identifier + '.' + ext, { type: video.blob.type || 'video/mp4' }));
+        files.push(toPackedVideoFile(video.blob, video.identifier));
       }
     }
     return files;
@@ -716,11 +717,7 @@ export class SaveDataService {
         if (packedIds.has(image.identifier)) continue;
         packedIds.add(image.identifier);
         const ext = MimeType.extension(image.blob.type) || 'bin';
-        imageFiles.push(new File(
-          [image.blob],
-          image.identifier + '.' + ext,
-          { type: image.blob.type },
-        ));
+        imageFiles.push(toPackedMediaFile(image.blob, image.identifier, ext, image.blob.type));
         continue;
       }
 
@@ -749,10 +746,11 @@ export class SaveDataService {
           idRemap.set(image.identifier, materialized.identifier);
         }
         const ext = MimeType.extension(materialized.blob.type) || 'bin';
-        const file = new File(
-          [materialized.blob],
-          materialized.identifier + '.' + ext,
-          { type: materialized.blob.type },
+        const file = toPackedMediaFile(
+          materialized.blob,
+          materialized.identifier,
+          ext,
+          materialized.blob.type,
         );
         this.packedAssetCache.set(image.identifier, {
           sourceUrl: image.url,
@@ -881,7 +879,7 @@ export class SaveDataService {
     for (const image of images) {
       if (!imageDict[image.identifier]) {
         if (image.state === ImageState.COMPLETE) {
-          const fileName = image.identifier + '.' + MimeType.extension(image.blob.type);
+          const fileName = packedMediaFileName(image.identifier, MimeType.extension(image.blob.type));
           imageDict[image.identifier] = 'images/' + fileName;
           files.push(new File([image.blob], 'images/' + fileName, { type: image.blob.type }));
         } else if (image.state === ImageState.URL) {

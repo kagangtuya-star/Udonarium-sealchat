@@ -6,6 +6,7 @@ import { probeAudioDurationSec } from '@udonarium/core/file-storage/audio-durati
 import { AudioPlayer, VolumeType } from '@udonarium/core/file-storage/audio-player';
 import { AudioStorage } from '@udonarium/core/file-storage/audio-storage';
 import { FileArchiver } from '@udonarium/core/file-storage/file-archiver';
+import { MimeType } from '@udonarium/core/file-storage/mime-type';
 import {
   formatJukeboxImportRejectLines,
   JukeboxImportReject,
@@ -38,6 +39,7 @@ const JUKEBOX_REJECT_TOAST_MS = 5000;
 export class JukeboxComponent implements OnInit, OnDestroy {
 
   readonly trackCount = JUKEBOX_TRACK_COUNT;
+  readonly audioFileAccept = MimeType.AUDIO_FILE_ACCEPT;
   readonly weatherTrackIndex = JUKEBOX_WEATHER_TRACK;
   readonly soundboardMaxDurationSec = SOUNDBOARD_MAX_DURATION_SEC;
   readonly soundboardPadCooldownMs = SOUNDBOARD_PAD_COOLDOWN_MS;

@@ -23,6 +23,13 @@ describe('partitionJukeboxImportFiles', () => {
     expect(rejected).toEqual([{ name: 'big.mp3', reason: 'tooLarge' }]);
   });
 
+  it('accepts common audio by extension when MIME is empty', () => {
+    const aiff = fakeFile('theme.aiff', 1000, '');
+    const { accepted, rejected } = partitionJukeboxImportFiles([aiff], max);
+    expect(accepted).toEqual([aiff]);
+    expect(rejected).toEqual([]);
+  });
+
   it('rejects non-audio', () => {
     const img = fakeFile('x.png', 100, 'image/png');
     const { accepted, rejected } = partitionJukeboxImportFiles([img], max);

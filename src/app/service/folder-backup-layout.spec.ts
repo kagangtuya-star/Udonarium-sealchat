@@ -5,6 +5,9 @@ import {
   isContentHashIdentifier,
   isMediaFileName,
   mediaHashFromName,
+  packedMediaFileName,
+  toPackedAudioFile,
+  toPackedVideoFile,
   sha256Hex,
   shouldSkipStateZipWrite,
   unionManifestMedia,
@@ -24,12 +27,32 @@ describe('folder-backup-layout', () => {
     expect(isMediaFileName('preview.jpg')).toBeFalse();
     const hash = 'a'.repeat(64);
     expect(isMediaFileName(`${hash}.png`)).toBeTrue();
+    expect(isMediaFileName(`media/${hash}.png`)).toBeTrue();
     expect(isMediaFileName('not-a-hash.png')).toBeFalse();
   });
 
-  it('mediaHashFromName strips extension', () => {
+  it('mediaHashFromName strips extension and directory prefixes', () => {
     const hash = 'b'.repeat(64);
     expect(mediaHashFromName(`${hash}.jpg`)).toBe(hash);
+    expect(mediaHashFromName(`media/${hash}.mp3`)).toBe(hash);
+    expect(mediaHashFromName(`media\\${hash}.mpeg`)).toBe(hash);
+  });
+
+  it('packedMediaFileName is always <sha256>.ext', () => {
+    const hash = 'd'.repeat(64);
+    expect(packedMediaFileName(hash, 'mp3')).toBe(`${hash}.mp3`);
+    expect(packedMediaFileName(hash, '.png')).toBe(`${hash}.png`);
+    expect(isMediaFileName(packedMediaFileName(hash, 'pdf'))).toBeTrue();
+  });
+
+  it('toPackedAudioFile / toPackedVideoFile use the shared hash.ext pack names', () => {
+    const hash = 'e'.repeat(64);
+    const audio = toPackedAudioFile(new Blob([new Uint8Array([1])], { type: 'audio/mpeg' }), hash);
+    expect(audio.name).toBe(`${hash}.mp3`);
+    expect(audio.type).toBe('audio/mpeg');
+    const video = toPackedVideoFile(new Blob([new Uint8Array([1])], { type: 'video/webm' }), hash);
+    expect(video.name).toBe(`${hash}.webm`);
+    expect(video.type).toBe('video/webm');
   });
 
   it('isContentHashIdentifier accepts 64-char hex only', () => {
@@ -99,5 +122,40 @@ describe('folder-backup-layout', () => {
       <data type="image">${card}</data>
     `;
     expect(collectReferencedMediaHashes(xml).sort()).toEqual([card, pdf].sort());
+  });
+
+  it('collectReferencedMediaHashes finds jukebox / library audio ids so orphaned media/ files restore', () => {
+    const bgm = '1'.repeat(64);
+    const se = '2'.repeat(64);
+    const pad = '3'.repeat(64);
+    const xml = `
+      <jukebox audioIdentifier="${bgm}" tracksJson="{&quot;audioIdentifier&quot;:&quot;${se}&quot;}" />
+      <audio-library dataJson="{&quot;orders&quot;:{&quot;&quot;:[&quot;${pad}&quot;]}}" />
+    `;
+    const found = collectReferencedMediaHashes(xml).sort();
+    expect(found).toContain(bgm);
+    expect(found).toContain(se);
+    expect(found).toContain(pad);
+  });
+
+  it('collectReferencedMediaHashes finds table / chat / combat / bake / scene hashes in JSON XML', () => {
+    const map = '4'.repeat(64);
+    const chat = '5'.repeat(64);
+    const combat = '6'.repeat(64);
+    const bake = '7'.repeat(64);
+    const scene = '8'.repeat(64);
+    const xml = `
+      <game-table imageIdentifier="${map}" />
+      <chat-message attachedImageIdentifiers="${chat}" />
+      <combat-tracker encountersJson="[{&quot;imageIdentifier&quot;:&quot;${combat}&quot;}]" />
+      <terrain bakeCropJson="{&quot;sourceImageIdentifier&quot;:&quot;${bake}&quot;}" />
+      <scene-preset tabletopJson="{&quot;imageIdentifier&quot;:&quot;${scene}&quot;}" />
+    `;
+    const found = collectReferencedMediaHashes(xml);
+    expect(found).toContain(map);
+    expect(found).toContain(chat);
+    expect(found).toContain(combat);
+    expect(found).toContain(bake);
+    expect(found).toContain(scene);
   });
 });

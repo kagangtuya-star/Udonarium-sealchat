@@ -21,6 +21,9 @@ describe('classifyNoteFile', () => {
     expect(classifyNoteFile(fakeFile('a.mp4', 'video/mp4'))).toBe('video');
     expect(classifyNoteFile(fakeFile('a.ogv'))).toBe('video');
     expect(classifyNoteFile(fakeFile('a.ogg', 'video/ogg'))).toBe('video');
+    expect(classifyNoteFile(fakeFile('a.mkv'))).toBe('video');
+    expect(classifyNoteFile(fakeFile('a.avi'))).toBe('video');
+    expect(classifyNoteFile(fakeFile('a.mpg'))).toBe('video');
   });
 
   it('does not treat audio/ogg as note video', () => {
@@ -47,5 +50,7 @@ describe('classifyNoteFile', () => {
   it('exports a non-empty accept string', () => {
     expect(NOTE_FILE_ACCEPT.indexOf('.markdown')).toBeGreaterThan(-1);
     expect(NOTE_FILE_ACCEPT.indexOf('.apng')).toBeGreaterThan(-1);
+    expect(NOTE_FILE_ACCEPT.indexOf('.mkv')).toBeGreaterThan(-1);
+    expect(NOTE_FILE_ACCEPT.indexOf('.avi')).toBeGreaterThan(-1);
   });
 });
