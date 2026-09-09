@@ -24,6 +24,10 @@ import {
 } from './missing-download-pipeline';
 import { repackTransferredBlob } from './single-file-media-transfer';
 import { MimeType } from './mime-type';
+import {
+  applyLocalImageLibraryDelete,
+  applyLocalImageLibraryRevive,
+} from './image-library-delete';
 
 export class ImageSharingSystem {
   private static _instance: ImageSharingSystem
@@ -51,6 +55,10 @@ export class ImageSharingSystem {
         netDebug('CONNECT_PEER ImageStorageService !!!', event.data.peerId);
         this.clearDeclinedForPeer(event.data.peerId);
         ImageStorage.instance.synchronize(event.data.peerId);
+        const deleted = ImageStorage.instance.deletedIdentifiers();
+        if (deleted.length) {
+          EventSystem.call('DELETE_IMAGE_FILES', { identifiers: deleted }, event.data.peerId);
+        }
       })
       .on('XML_LOADED', event => {
         convertUrlImage(event.data.xmlElement);
@@ -80,6 +88,7 @@ export class ImageSharingSystem {
         let randomRequest: CatalogItem[] = [];
 
         for (let item of request) {
+          if (ImageStorage.instance.isDeleted(item.identifier)) continue;
           let image: ImageFile = ImageStorage.instance.get(item.identifier);
           if (image && item.state < image.state
             && !this.isSendDeclined(event.data.receiver, item.identifier)) {
@@ -118,6 +127,7 @@ export class ImageSharingSystem {
         let updateImages: ImageContext[] = event.data.updateImages;
         netDebug('UPDATE_FILE_RESOURE ImageStorageService ' + event.sendFrom + ' -> ', updateImages);
         for (let context of updateImages) {
+          if (ImageStorage.instance.isDeleted(context.identifier)) continue;
           if (context.blob) context.blob = repackTransferredBlob(context.blob, context.type) as Blob;
           if (context.thumbnail?.blob) {
             context.thumbnail.blob = repackTransferredBlob(
@@ -131,6 +141,7 @@ export class ImageSharingSystem {
       .on('START_FILE_TRANSMISSION', event => {
         netDebug('START_FILE_TRANSMISSION ' + event.data.taskIdentifier);
         let identifier = event.data.taskIdentifier;
+        if (ImageStorage.instance.isDeleted(identifier)) return;
         let image: ImageFile = ImageStorage.instance.get(identifier);
         if (this.receiveTaskMap.has(identifier)) {
           return;
@@ -141,6 +152,15 @@ export class ImageSharingSystem {
           return;
         }
         this.startReceiveTask(identifier, event.sendFrom);
+      })
+      .on('DELETE_IMAGE_FILES', event => {
+        const identifiers: string[] = event.data?.identifiers || [];
+        if (!event.isSendFromSelf) applyLocalImageLibraryDelete(identifiers);
+        this.cancelImageTransfers(identifiers);
+      })
+      .on('REVIVE_IMAGE_FILES', event => {
+        if (event.isSendFromSelf) return;
+        applyLocalImageLibraryRevive(event.data?.identifiers || []);
       });
   }
 
@@ -244,6 +264,17 @@ export class ImageSharingSystem {
     netDebug('stopReceiveTask => ', this.receiveTaskMap.size);
   }
 
+  private cancelImageTransfers(identifiers: string[]) {
+    for (const id of identifiers) {
+      if (!id) continue;
+      this.stopReceiveTask(id);
+      const suffix = `:${id}`;
+      for (const key of Array.from(this.sendTaskMap.keys())) {
+        if (key === id || key.endsWith(suffix)) this.stopSendTask(key);
+      }
+    }
+  }
+
   private missingDownloadHooks(): MissingDownloadHooks {
     return buildMissingDownloadHooks({
       kind: 'image',
@@ -252,11 +283,16 @@ export class ImageSharingSystem {
       urlState: ImageState.URL,
       isReceiving: id => this.receiveTaskMap.has(id),
       get: id => ImageStorage.instance.get(id),
-      addEmpty: id => { ImageStorage.instance.add(ImageFile.createEmpty(id)); },
-      addUrlBacked: id => { ImageStorage.instance.add(ImageFile.create(id)); },
+      addEmpty: id => {
+        ImageStorage.instance.add(ImageFile.createEmpty(id));
+      },
+      addUrlBacked: id => {
+        ImageStorage.instance.add(ImageFile.create(id));
+      },
       requestOne: (identifier, localState, peerId) => {
         this.request([{ identifier, state: localState }], peerId);
       },
+      shouldSkip: id => ImageStorage.instance.isDeleted(id),
     });
   }
 

@@ -26,6 +26,10 @@ import {
 import { AudioFile, AudioFileContext, AudioState } from './audio-file';
 import { AudioStorage, CatalogItem } from './audio-storage';
 import { BufferSharingTask } from './buffer-sharing-task';
+import {
+  applyLocalAudioLibraryDelete,
+  applyLocalAudioLibraryRevive,
+} from './audio-library-delete';
 
 export class AudioSharingSystem {
   private static _instance: AudioSharingSystem
@@ -48,6 +52,10 @@ export class AudioSharingSystem {
         netDebug('CONNECT_PEER AudioStorageService !!!', event.data.peerId);
         AudioStorage.instance.synchronize(event.data.peerId);
         AudioStorage.instance.lazySynchronize(1000, event.data.peerId);
+        const deleted = AudioStorage.instance.deletedIdentifiers();
+        if (deleted.length) {
+          EventSystem.call('DELETE_AUDIO_FILES', { identifiers: deleted }, event.data.peerId);
+        }
       })
       .on('SYNCHRONIZE_AUDIO_LIST', event => {
         if (event.isSendFromSelf) return;
@@ -90,11 +98,15 @@ export class AudioSharingSystem {
       .on('UPDATE_AUDIO_RESOURE', 1000, event => {
         let updateAudios: AudioFileContext[] = event.data;
         netDebug('UPDATE_AUDIO_RESOURE AudioStorageService ' + event.sendFrom + ' -> ', updateAudios);
-        applyBlobContextsToStorage(updateAudios, ctx => AudioStorage.instance.add(ctx));
+        applyBlobContextsToStorage(updateAudios, ctx => {
+          if (AudioStorage.instance.isDeleted(ctx.identifier)) return;
+          AudioStorage.instance.add(ctx);
+        });
       })
       .on('START_AUDIO_TRANSMISSION', event => {
         netDebug('START_AUDIO_TRANSMISSION ' + event.data.fileIdentifier);
         const identifier: string = event.data.fileIdentifier;
+        if (AudioStorage.instance.isDeleted(identifier)) return;
         acceptOrDeclineStartTransmission({
           identifier,
           sendFrom: event.sendFrom,
@@ -104,6 +116,15 @@ export class AudioSharingSystem {
           declineGate: this.startDeclineGate,
           startReceive: (id, from) => this.startReceiveTask(id, from),
         });
+      })
+      .on('DELETE_AUDIO_FILES', event => {
+        const identifiers: string[] = event.data?.identifiers || [];
+        if (!event.isSendFromSelf) applyLocalAudioLibraryDelete(identifiers);
+        this.cancelAudioTransfers(identifiers);
+      })
+      .on('REVIVE_AUDIO_FILES', event => {
+        if (event.isSendFromSelf) return;
+        applyLocalAudioLibraryRevive(event.data?.identifiers || []);
       });
   }
 
@@ -156,6 +177,21 @@ export class AudioSharingSystem {
     netDebug('stopReceiveTask => ', this.receiveTaskMap.size);
   }
 
+  private cancelAudioTransfers(identifiers: string[]) {
+    for (const id of identifiers) {
+      if (!id) continue;
+      this.stopReceiveTask(id);
+      const suffix = `:${id}`;
+      for (const key of Array.from(this.sendTaskMap.keys())) {
+        if (key === id || key.endsWith(suffix)) {
+          const task = this.sendTaskMap.get(key);
+          if (task) task.cancel();
+          this.sendTaskMap.delete(key);
+        }
+      }
+    }
+  }
+
   ensureRoomDownloads(catalogsByPeer: Map<string, CatalogItem[]>) {
     const hooks = this.missingDownloadHooks();
     ensureRoomMissingDownloads(catalogsByPeer, hooks);
@@ -169,11 +205,16 @@ export class AudioSharingSystem {
       urlState: AudioState.URL,
       isReceiving: id => this.receiveTaskMap.has(id),
       get: id => AudioStorage.instance.get(id),
-      addEmpty: id => { AudioStorage.instance.add(AudioFile.createEmpty(id)); },
-      addUrlBacked: id => { AudioStorage.instance.add(AudioFile.create(id)); },
+      addEmpty: id => {
+        AudioStorage.instance.add(AudioFile.createEmpty(id));
+      },
+      addUrlBacked: id => {
+        AudioStorage.instance.add(AudioFile.create(id));
+      },
       requestOne: (identifier, localState, peerId) => {
         this.request([{ identifier, state: localState }], peerId);
       },
+      shouldSkip: id => AudioStorage.instance.isDeleted(id),
     });
   }
 

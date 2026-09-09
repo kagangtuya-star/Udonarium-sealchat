@@ -7,6 +7,7 @@ import {
   insertOrUpdateMediaFile,
   LazyCatalogSynchronizer,
   MEDIA_LAZY_SYNC_MIN_MS,
+  SessionTombstones,
 } from './media-storage-helpers';
 
 describe('media-storage-helpers', () => {
@@ -152,5 +153,37 @@ describe('media-storage-helpers', () => {
       createUrlBacked: id => ({ id }),
       store: file => file,
     })).toBeNull();
+  });
+
+  it('SessionTombstones blocks add and lists ids', () => {
+    const stones = new SessionTombstones();
+    expect(stones.add('')).toBeFalse();
+    expect(stones.add('a')).toBeTrue();
+    expect(stones.has('a')).toBeTrue();
+    expect(stones.identifiers()).toEqual(['a']);
+
+    const hash: { [id: string]: { identifier: string } } = {};
+    const file = { identifier: 'a' };
+    expect(stones.blockedAdd(hash, file)).toBe(file);
+    hash.a = { identifier: 'a' };
+    expect(stones.blockedAdd(hash, file)).toBe(hash.a);
+
+    stones.remove('a');
+    expect(stones.has('a')).toBeFalse();
+    expect(stones.blockedAdd(hash, file)).toBeNull();
+    stones.add('b');
+    stones.clear();
+    expect(stones.identifiers()).toEqual([]);
+  });
+
+  it('SessionTombstones.reviveThenStore clears the tombstone then stores', () => {
+    const stones = new SessionTombstones();
+    const file = { identifier: 'a' };
+    stones.add('a');
+    const stored = { identifier: 'a' };
+    const result = stones.reviveThenStore(file, () => stored);
+    expect(result).toEqual({ stored, wasDeleted: true });
+    expect(stones.has('a')).toBeFalse();
+    expect(stones.reviveThenStore(file, () => stored).wasDeleted).toBeFalse();
   });
 });

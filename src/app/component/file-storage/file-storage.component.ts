@@ -8,6 +8,7 @@ import { EventSystem, Network } from '@udonarium/core/system';
 import { PanelService } from 'service/panel.service';
 import { ImageTagList } from '@udonarium/image-tag-list';
 import { ImageTag } from '@udonarium/image-tag';
+import { deleteImageLibraryFiles, imageIsReferencedInRoom } from '@udonarium/core/file-storage/image-library-delete';
 import { animate, keyframes, style, transition, trigger } from '@angular/animations';
 import { UUID } from '@udonarium/core/system/util/uuid';
 import { ConfirmationComponent, ConfirmationType } from 'component/confirmation/confirmation.component';
@@ -170,6 +171,9 @@ export class FileStorageComponent implements OnInit, OnDestroy, AfterViewInit {
     .on('OPERATE_IMAGE_TAGS', event => {
       this.changeDetector.markForCheck();
     })
+    .on('DELETE_IMAGE_FILES', () => {
+      this.changeDetector.markForCheck();
+    })
     .on('CHANGE_SORT_ORDER', event => {
       if (event.isSendFromSelf) this.changeDetector.markForCheck();
     });
@@ -299,6 +303,27 @@ export class FileStorageComponent implements OnInit, OnDestroy, AfterViewInit {
           imageTag.hide = toHidden;
           EventSystem.call('OPERATE_IMAGE_TAGS', imageTag.identifier);
         }
+      }
+    });
+  }
+
+  deleteSelectedImages() {
+    if (this.GuestMode()) return;
+    const ids = this.selectedImageFiles.map(image => image.identifier).filter(id => !!id);
+    if (!ids.length) return;
+    const inUse = ids.some(id => imageIsReferencedInRoom(id));
+    this.modalService.open(ConfirmationComponent, {
+      title: this.i18n.t('file.deleteTitle'),
+      text: this.i18n.t('file.deleteText', { count: ids.length }),
+      help: this.i18n.t('file.deleteHelp'),
+      warn: inUse ? this.i18n.t('file.deleteInUse') : '',
+      type: ConfirmationType.OK_CANCEL,
+      materialIcon: 'delete',
+      action: () => {
+        this.chatMessageService.sendOperationLog(this.i18n.t('file.deleteLog', { count: ids.length }));
+        deleteImageLibraryFiles(ids);
+        this.selectedImageFiles = [];
+        this.changeDetector.markForCheck();
       }
     });
   }

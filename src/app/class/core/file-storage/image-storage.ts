@@ -7,6 +7,7 @@ import {
   deleteMediaFromHash,
   getOrHydrateUrlBacked,
   insertOrUpdateMediaFile,
+  SessionTombstones,
 } from './media-storage-helpers';
 
 export type CatalogItem = {
@@ -24,6 +25,7 @@ export class ImageStorage {
   }
 
   private imageHash: { [identifier: string]: ImageFile } = {};
+  private readonly tombstones = new SessionTombstones();
 
   get images(): ImageFile[] {
     let images: ImageFile[] = [];
@@ -49,18 +51,19 @@ export class ImageStorage {
   async addAsync(arg: any): Promise<ImageFile> {
     let image: ImageFile = await ImageFile.createAsync(arg);
 
-    return this._add(image);
+    return this.reviveAndStore(image);
   }
 
   /** Restore `<sha256>.ext` from ZIP / folder media under the filename hash. */
-  async addPackedAsync(file: File): Promise<ImageFile> {
+  async addPackedAsync(file: File, opts?: { revive?: boolean }): Promise<ImageFile> {
+    const revive = opts?.revive !== false;
     return addPackedByContentHash({
       file,
       completeState: ImageState.COMPLETE,
       get: id => this.get(id),
       addAsync: f => this.addAsync(f),
       createPacked: (f, hash) => ImageFile.createPackedAsync(f, hash),
-      store: image => this._add(image),
+      store: image => revive ? this.reviveAndStore(image) : this._add(image),
     });
   }
 
@@ -81,6 +84,8 @@ export class ImageStorage {
   }
 
   private _add(image: ImageFile): ImageFile {
+    const blocked = this.tombstones.blockedAdd(this.imageHash, image);
+    if (blocked) return blocked;
     return insertOrUpdateMediaFile({
       hash: this.imageHash,
       file: image,
@@ -88,6 +93,13 @@ export class ImageStorage {
       lazySynchronize: ms => this.lazySynchronize(ms),
       tryUpdate: file => this.update(file),
     });
+  }
+
+  /** User / ZIP re-import of a previously deleted hash: clear tombstone then store. */
+  private reviveAndStore(image: ImageFile): ImageFile {
+    const { stored, wasDeleted } = this.tombstones.reviveThenStore(image, file => this._add(file));
+    if (wasDeleted) EventSystem.call('REVIVE_IMAGE_FILES', { identifiers: [image.identifier] });
+    return stored;
   }
 
   private update(image: ImageFile): boolean
@@ -111,7 +123,30 @@ export class ImageStorage {
     return deleteMediaFromHash(this.imageHash, identifier);
   }
 
+  isDeleted(identifier: string): boolean {
+    return this.tombstones.has(identifier);
+  }
+
+  deletedIdentifiers(): string[] {
+    return this.tombstones.identifiers();
+  }
+
+  markDeleted(identifier: string): void {
+    if (!this.tombstones.add(identifier)) return;
+    this.delete(identifier);
+  }
+
+  revive(identifier: string): void {
+    this.tombstones.remove(identifier);
+  }
+
+  /** @internal Clears tombstones between specs. */
+  resetDeletedForTests(): void {
+    this.tombstones.clear();
+  }
+
   get(identifier: string): ImageFile {
+    if (this.isDeleted(identifier)) return null;
     return getOrHydrateUrlBacked({
       hash: this.imageHash,
       identifier,

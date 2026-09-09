@@ -98,6 +98,53 @@ export function getOrHydrateUrlBacked<T>(options: {
   return options.store(options.createUrlBacked(options.identifier));
 }
 
+/** Session-only ids that P2P catalog sync must not resurrect. */
+export class SessionTombstones {
+  private readonly ids = new Set<string>();
+
+  has(identifier: string): boolean {
+    return !!identifier && this.ids.has(identifier);
+  }
+
+  identifiers(): string[] {
+    return Array.from(this.ids);
+  }
+
+  add(identifier: string): boolean {
+    if (!identifier) return false;
+    this.ids.add(identifier);
+    return true;
+  }
+
+  remove(identifier: string): void {
+    if (!identifier) return;
+    this.ids.delete(identifier);
+  }
+
+  clear(): void {
+    this.ids.clear();
+  }
+
+  /** Clear tombstone then store; `wasDeleted` is for broadcasting revive. */
+  reviveThenStore<T extends { identifier: string }>(
+    file: T,
+    store: (file: T) => T,
+  ): { stored: T; wasDeleted: boolean } {
+    const wasDeleted = this.has(file.identifier);
+    this.remove(file.identifier);
+    return { stored: store(file), wasDeleted };
+  }
+
+  /** If tombstoned, return the existing hash entry (or `file`) so callers skip insert. */
+  blockedAdd<T extends { identifier: string }>(
+    hash: { [identifier: string]: T },
+    file: T,
+  ): T | null {
+    if (!this.has(file.identifier)) return null;
+    return hash[file.identifier] || file;
+  }
+}
+
 /** Advertise COMPLETE blob assets only (never URL / in-progress). */
 export function buildCompleteBlobCatalog(
   files: ReadonlyArray<{ identifier: string; state: number; blob?: Blob | null }>,

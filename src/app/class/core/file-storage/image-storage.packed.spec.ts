@@ -6,6 +6,7 @@ describe('ImageStorage packed restore', () => {
 
   afterEach(() => {
     ImageStorage.instance.delete(hash);
+    ImageStorage.instance.resetDeletedForTests();
   });
 
   it('addPackedAsync keeps filename hash even when bytes would rehash differently', async () => {
@@ -23,5 +24,25 @@ describe('ImageStorage packed restore', () => {
     expect(image.identifier).toBe(hash);
     expect(image.state).toBe(ImageState.COMPLETE);
     expect(ImageStorage.instance.get(hash)?.state).toBe(ImageState.COMPLETE);
+  });
+
+  it('addPackedAsync revive:false does not resurrect a tombstone', async () => {
+    const png = Uint8Array.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+      0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+      0x00, 0x00, 0x03, 0x00, 0x01, 0x00, 0x05, 0xfe, 0xd4, 0xef, 0x00, 0x00,
+      0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]);
+    const file = new File([png], `${hash}.png`, { type: 'image/png' });
+    await ImageStorage.instance.addPackedAsync(file);
+    ImageStorage.instance.markDeleted(hash);
+    await ImageStorage.instance.addPackedAsync(file, { revive: false });
+    expect(ImageStorage.instance.isDeleted(hash)).toBeTrue();
+    expect(ImageStorage.instance.get(hash)).toBeNull();
+    await ImageStorage.instance.addPackedAsync(file);
+    expect(ImageStorage.instance.isDeleted(hash)).toBeFalse();
+    expect(ImageStorage.instance.get(hash)?.identifier).toBe(hash);
   });
 });

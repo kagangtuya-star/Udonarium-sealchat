@@ -1,5 +1,6 @@
 import { ImageFile, ImageState } from '@udonarium/core/file-storage/image-file';
 import { ImageStorage } from '@udonarium/core/file-storage/image-storage';
+import { AudioStorage } from '@udonarium/core/file-storage/audio-storage';
 import { FileArchiver } from '@udonarium/core/file-storage/file-archiver';
 import { Network } from '@udonarium/core/system';
 
@@ -98,6 +99,28 @@ describe('FolderMediaHydrator', () => {
     const result = await FolderMediaHydrator.instance.hydrate('image', 'https://example.com/a.png');
     expect(result).toBeFalse();
     expect(FolderBackupService.instance!.getMediaDirectoryHandle).not.toHaveBeenCalled();
+  });
+
+  it('hydrate skips tombstoned images without reading media/', async () => {
+    spyOn(ImageStorage.instance, 'isDeleted').and.returnValue(true);
+    const result = await FolderMediaHydrator.instance.hydrate('image', hash);
+    expect(result).toBeFalse();
+    expect(FolderBackupService.instance!.getMediaDirectoryHandle).not.toHaveBeenCalled();
+  });
+
+  it('hydrate skips if the hash is tombstoned after disk lookup', async () => {
+    let deleted = false;
+    spyOn(ImageStorage.instance, 'isDeleted').and.callFake(() => deleted);
+    spyOn(ImageStorage.instance, 'get').and.returnValue(null);
+    spyOn(FolderMediaHydrator.instance, 'findFileName').and.callFake(async () => {
+      deleted = true;
+      return fileName;
+    });
+    const importSpy = spyOn(FileArchiver.instance, 'importMediaFile').and.returnValue(Promise.resolve());
+
+    const result = await FolderMediaHydrator.instance.hydrate('image', hash);
+    expect(result).toBeFalse();
+    expect(importSpy).not.toHaveBeenCalled();
   });
 
   it('invalidateIndex clears cached index', async () => {

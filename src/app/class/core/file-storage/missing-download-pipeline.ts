@@ -20,6 +20,8 @@ export interface MissingDownloadCollector {
   getLocalState: (identifier: string) => number | null;
   ensurePlaceholder: (identifier: string) => void;
   hydrateUrlBacked: (item: MissingCatalogItem) => boolean;
+  /** Skip catalog rows (e.g. images tombstoned by library delete). */
+  shouldSkip?: (identifier: string) => boolean;
 }
 
 export interface MissingDownloadQueuer extends Pick<
@@ -60,6 +62,7 @@ export function buildMissingDownloadHooks(options: {
   addEmpty: (identifier: string) => void;
   addUrlBacked: (identifier: string) => void;
   requestOne: (identifier: string, localState: number, peerId: string) => void;
+  shouldSkip?: (identifier: string) => boolean;
 }): MissingDownloadHooks {
   return {
     kind: options.kind,
@@ -75,6 +78,7 @@ export function buildMissingDownloadHooks(options: {
       addUrlBacked: options.addUrlBacked,
     }),
     requestOne: options.requestOne,
+    shouldSkip: options.shouldSkip,
   };
 }
 
@@ -85,6 +89,7 @@ export function collectMissingDownloadRequests(
 ): Array<{ identifier: string; state: number }> {
   const request: Array<{ identifier: string; state: number }> = [];
   for (const item of catalog) {
+    if (hooks.shouldSkip?.(item.identifier)) continue;
     if (hooks.hydrateUrlBacked(item)) continue;
     let localState = hooks.getLocalState(item.identifier);
     if (localState === null) {

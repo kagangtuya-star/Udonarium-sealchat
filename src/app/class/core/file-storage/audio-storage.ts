@@ -8,6 +8,7 @@ import {
   insertOrUpdateMediaFile,
   LazyCatalogSynchronizer,
   MediaCatalogItem,
+  SessionTombstones,
 } from './media-storage-helpers';
 
 export type CatalogItem = MediaCatalogItem;
@@ -23,6 +24,7 @@ export class AudioStorage {
     EventSystem.call('SYNCHRONIZE_AUDIO_LIST', this.getCatalog(), peer);
   });
   private hash: { [identifier: string]: AudioFile } = {};
+  private readonly tombstones = new SessionTombstones();
 
   get audios(): AudioFile[] {
     let audios: AudioFile[] = [];
@@ -46,17 +48,18 @@ export class AudioStorage {
   async addAsync(arg: any, displayName?: string): Promise<AudioFile> {
     let audio: AudioFile = await AudioFile.createAsync(arg, displayName);
 
-    return this._add(audio);
+    return this.reviveAndStore(audio);
   }
 
-  async addPackedAsync(file: File): Promise<AudioFile> {
+  async addPackedAsync(file: File, opts?: { revive?: boolean }): Promise<AudioFile> {
+    const revive = opts?.revive !== false;
     return addPackedByContentHash({
       file,
       completeState: AudioState.COMPLETE,
       get: id => this.get(id),
       addAsync: f => this.addAsync(f),
       createPacked: (f, hash) => AudioFile.createPackedAsync(f, hash),
-      store: audio => this._add(audio),
+      store: audio => revive ? this.reviveAndStore(audio) : this._add(audio),
     });
   }
 
@@ -64,19 +67,33 @@ export class AudioStorage {
   add(audio: AudioFile): AudioFile
   add(context: AudioFileContext): AudioFile
   add(arg: any): AudioFile {
+    return this.put(arg, false);
+  }
+
+  /** User / ZIP / URL import: clear the session tombstone then store (broadcasts REVIVE). */
+  addImported(url: string): AudioFile
+  addImported(audio: AudioFile): AudioFile
+  addImported(context: AudioFileContext): AudioFile
+  addImported(arg: any): AudioFile {
+    return this.put(arg, true);
+  }
+
+  private put(arg: any, asImport: boolean): AudioFile {
     let audio: AudioFile;
     if (typeof arg === 'string') {
       audio = AudioFile.create(arg);
     } else if (arg instanceof AudioFile) {
       audio = arg;
     } else {
-      if (this.update(arg)) return this.hash[arg.identifier];
+      if (!asImport && this.update(arg)) return this.hash[arg.identifier];
       audio = AudioFile.create(arg);
     }
-    return this._add(audio);
+    return asImport ? this.reviveAndStore(audio) : this._add(audio);
   }
 
   private _add(audio: AudioFile): AudioFile {
+    const blocked = this.tombstones.blockedAdd(this.hash, audio);
+    if (blocked) return blocked;
     return insertOrUpdateMediaFile({
       hash: this.hash,
       file: audio,
@@ -84,6 +101,13 @@ export class AudioStorage {
       lazySynchronize: ms => this.lazySynchronize(ms),
       tryUpdate: file => this.update(file),
     });
+  }
+
+  /** User / ZIP re-import of a previously deleted hash: clear tombstone then store. */
+  private reviveAndStore(audio: AudioFile): AudioFile {
+    const { stored, wasDeleted } = this.tombstones.reviveThenStore(audio, file => this._add(file));
+    if (wasDeleted) EventSystem.call('REVIVE_AUDIO_FILES', { identifiers: [audio.identifier] });
+    return stored;
   }
 
   private update(audio: AudioFile): boolean
@@ -107,7 +131,30 @@ export class AudioStorage {
     return deleteMediaFromHash(this.hash, identifier);
   }
 
+  isDeleted(identifier: string): boolean {
+    return this.tombstones.has(identifier);
+  }
+
+  deletedIdentifiers(): string[] {
+    return this.tombstones.identifiers();
+  }
+
+  markDeleted(identifier: string): void {
+    if (!this.tombstones.add(identifier)) return;
+    this.delete(identifier);
+  }
+
+  revive(identifier: string): void {
+    this.tombstones.remove(identifier);
+  }
+
+  /** @internal Clears tombstones between specs. */
+  resetDeletedForTests(): void {
+    this.tombstones.clear();
+  }
+
   get(identifier: string): AudioFile {
+    if (this.isDeleted(identifier)) return null;
     return getOrHydrateUrlBacked({
       hash: this.hash,
       identifier,

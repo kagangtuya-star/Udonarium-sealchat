@@ -88,6 +88,15 @@ describe('FileReceiveScheduler', () => {
     expect(log.calls.all().filter(c => String(c.args[0]).includes('[file-sync] receive order (queued')).length).toBe(1);
   });
 
+  it('abortReceive drops a queued image download', () => {
+    peerIds = [];
+    FileReceiveScheduler.enqueueReceiveRequest('image', 'p1', 'gone', 1000, () => {});
+    expect(FileReceiveScheduler.isTransferPending('image', 'gone')).toBeTrue();
+    FileReceiveScheduler.abortReceive('image', 'gone');
+    expect(FileReceiveScheduler.isTransferPending('image', 'gone')).toBeFalse();
+    expect(FileReceiveScheduler.isTransferActive('image', 'gone')).toBeFalse();
+  });
+
   it('promotes playing BGM after markForChanged-style Jukebox identifier event', () => {
     const log = spyOn(console, 'log');
     peerIds = []; // keep queue pending so tiers stay visible
