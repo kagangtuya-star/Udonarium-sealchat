@@ -256,6 +256,12 @@ Upgraded to 1.13.2`,
 ・**File sync**: early FILES progress on join, map images first; canceling the file picker no longer clears Token images
 ・**Hand／merge**: locked stacks／cards refuse merge targets; card preview text panel, TTS sheet preview, image-note footing polish
 ・**Shortcuts**: context menus show Ctrl＋C／X／V (temp Token = Ctrl＋Shift＋V); dice／coin re-roll is **R** (**F** still flips a card／turns a deck)`,
+  'changelog.2026sepMid': `2026/09/08–10 Library delete・character sheet edit
+・**Image／audio library delete**: selected files leave this room and currently connected players, and will not come back over P2P; re-importing the same file restores them. Jukebox also deletes a track from the right-click menu
+・**ZIP／folder restore**: packed audio／video restore as hash.ext like card images, so reload is less likely to miss files
+・**Check fields**: option text stays visible when unchecked (token hover, sheet, inventory); an on|off pair shows the off side when unchecked
+・**Sheet edit**: Edit MODE is compact (option／note／URL no longer stretch the card); note fields drag taller and remember height; Add item sits left of Toggle edit
+・**Image library**: text selection is disabled so you can box-select images`,
   'changelog.links': `Site: https://z01.hktrpg.com
 Guide: https://wiki.hktrpg.com/TRPG/Udonarium烏冬教學
 Discord: https://support.hktrpg.com
