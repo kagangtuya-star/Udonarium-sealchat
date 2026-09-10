@@ -250,3 +250,20 @@ Hover Caption (name→text); Ctrl／⌘ Object Image Preview (pin, dblclick deta
 Face-down cards: no player detail; caption anchors beside the painted card
 
 ---
+
+Udonarium Development Diary 33
+Print & Play・streetscape・room passwords・shortcuts (2026/09/03–07)
+PDF cards: page range, auto-trim, preview zoom／pan／magnetic edges
+Streetscape: Open3Dhk／PLATEAU background import + HUD; HK scale; GSI aerial floor
+Role passwords kept; early FILES／map images first; cancel picker does not wipe Token images
+Locked stacks refuse merge; dice re-roll is R; menus show Ctrl＋C／X／V
+
+---
+
+Udonarium Development Diary 34
+Library delete・character sheet edit (2026/09/08–10)
+Deleted images／tracks stay gone over P2P; re-import restores
+Packed audio／video restore as hash.ext
+Unchecked check fields still show option text; compact Edit MODE; note fields remember height
+
+---
