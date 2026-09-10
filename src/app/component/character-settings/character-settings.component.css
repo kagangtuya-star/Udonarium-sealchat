@@ -306,6 +306,10 @@
   align-items: start;
 }
 
+.sheet-grid.is-editing {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .data-card {
   min-width: 0;
   height: fit-content;
@@ -321,6 +325,10 @@
 .sheet-section {
   display: block;
   width: 100%;
+}
+
+.sheet-section.is-edit {
+  display: grid;
 }
 
 @media (max-width: 420px) {

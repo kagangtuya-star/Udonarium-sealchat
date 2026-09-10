@@ -147,16 +147,16 @@
     <header class="sheet-head">
       <span class="sheet-title">{{ 'char.settings.sheet' | i18n }}</span>
       <div class="sheet-tools">
-        <button type="button" class="btn btn-sm" [class.is-active]="isEdit" (click)="toggleEditMode()" [disabled]="GuestMode()">
-          {{ 'sheet.toggleEdit' | i18n }}
-        </button>
         <button type="button" class="btn btn-sm" *ngIf="isEdit" (click)="addDataElement()" [disabled]="GuestMode()">
           {{ 'sheet.addItem' | i18n }}
+        </button>
+        <button type="button" class="btn btn-sm" [class.is-active]="isEdit" (click)="toggleEditMode()" [disabled]="GuestMode()">
+          {{ 'sheet.toggleEdit' | i18n }}
         </button>
       </div>
     </header>
     <div class="sheet-scroll" [class.is-empty]="!detailSections.length">
-      <div class="sheet-grid" *ngIf="detailSections.length">
+      <div class="sheet-grid" [class.is-editing]="isEdit" *ngIf="detailSections.length">
         <div class="data-card" *ngFor="let childElement of detailSections">
           <div class="sheet-section" game-data-element
             [gameDataElement]="$any(childElement)" [tabletopObject]="character"

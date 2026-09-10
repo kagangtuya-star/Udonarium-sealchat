@@ -1,7 +1,9 @@
 <ng-container *ngIf="gameDataElement && !isNotApplicable && !(isHideText && (name == 'text' || name == 'fontsize' || name == 'color'))">
   <ng-container *ngIf="gameDataElement.children.length < 1">
-    <div *ngIf="isEdit" class="table-cell table-cell_solid">
+    <div *ngIf="isEdit" class="table-cell table-cell_solid edit-tools">
       <ng-container *ngTemplateOutlet="editButtons"></ng-container>
+    </div>
+    <div *ngIf="isEdit" class="table-cell table-cell_type">
       <select #select (change)="setElementType(select.value)" [ngModel]="gameDataElement.type ?? ''">
         <option value="">{{ 'sheet.data.type.normal' | i18n }}</option>
         <option value="simpleNumber">{{ 'sheet.data.type.number' | i18n }}</option>
@@ -12,7 +14,7 @@
         <option value="url">{{ 'sheet.data.type.url' | i18n }}</option>
       </select>
     </div>
-    <div class="table-cell table-cell_solid">
+    <div class="table-cell table-cell_solid table-cell_name">
       <ng-container *ngIf="isTagLocked">
         <button *ngIf="!isCommonValue" type="button" [attr.title]="'sheet.sendToChat' | i18n" style="vertical-align: middle; padding: 0 2px;" (click)="sendLogMessage()">
           <i class="material-icons" style="font-size: 1rem;">send</i>
@@ -29,7 +31,7 @@
           [(ngModel)]="name" [placeholder]="'sheet.placeholder.value' | i18n" />
       </ng-container>
     </div>
-    <div class="table-cell">
+    <div class="table-cell table-cell_value">
       <ng-container *ngIf="isCommonValue">
         <ng-container [ngSwitch]="gameDataElement.name">
           <ng-container *ngSwitchCase="'opacity'">
@@ -79,9 +81,9 @@
             </div>
           </ng-container>
           <ng-container *ngSwitchCase="'abilityScore'">
-            <input appLogging [logging.name]="tabletopObjectName" [logging.dataElement]="gameDataElement" [logging.disable]="isNoLogging" style="width:40%; max-width:5em; text-align:right" type="{{isNum(value) ? 'number' : 'text'}}" size="1" [(ngModel)]="value" [placeholder]="'sheet.placeholder.value' | i18n">
-            <ng-container *ngIf="isEdit">
-              <select class="modeifire-type" style="width:40%; max-width:5em" [(ngModel)]="currentValue">
+            <div class="field-line">
+              <input appLogging [logging.name]="tabletopObjectName" [logging.dataElement]="gameDataElement" [logging.disable]="isNoLogging" class="ability-value" type="{{isNum(value) ? 'number' : 'text'}}" size="1" [(ngModel)]="value" [placeholder]="'sheet.placeholder.value' | i18n">
+              <select *ngIf="isEdit" class="modeifire-type field-grow" [(ngModel)]="currentValue">
                 <option value="">{{ 'sheet.data.none' | i18n }}</option>
                 <option value="div2">{{ 'sheet.modifier.div2' | i18n }}</option>
                 <option value="div3">{{ 'sheet.modifier.div3' | i18n }}</option>
@@ -91,24 +93,28 @@
                 <option value="div10">{{ 'sheet.modifier.div10' | i18n }}</option>
                 <option value="DnD3">{{ 'sheet.modifier.dnd3e' | i18n }}</option>
               </select>
-            </ng-container>
-            <ng-container *ngIf="!isEdit && currentValue"><span style="font-size: smaller;">{{'(' + (abilityScore >=0 ? '+' : '') + abilityScore + ')'}}</span></ng-container>
+              <span *ngIf="!isEdit && currentValue" class="ability-mod">{{'(' + (abilityScore >=0 ? '+' : '') + abilityScore + ')'}}</span>
+            </div>
           </ng-container>
           <ng-container *ngSwitchCase="'checkProperty'">
+            <div class="field-line">
               <input appLogging [logging.name]="tabletopObjectName" [logging.dataElement]="gameDataElement" [logging.disable]="isNoLogging" type="checkbox" [(ngModel)]="value" checked="{{value ? 'checked' : ''}}" (change)="value = (value ? name : '')">
-              <input *ngIf="isEdit" style="width:50%; max-width:4em" type="text" size="1" [(ngModel)]="currentValue" [placeholder]="'sheet.placeholder.option' | i18n">
-              <span *ngIf="!isEdit" style="font-size: 1.0em; font-family: Cambria, Georgia; color: #555">{{checkValue}}</span>
-            </ng-container>
+              <input *ngIf="isEdit" class="field-grow" type="text" size="1" [(ngModel)]="currentValue" [placeholder]="'sheet.placeholder.option' | i18n">
+              <span *ngIf="!isEdit" class="check-label field-grow">{{checkValue}}</span>
+            </div>
+          </ng-container>
           <ng-container *ngSwitchCase="'note'">
-            <textarea class="note-field" [class.is-dense]="dense" [(ngModel)]="value" [placeholder]="'sheet.placeholder.note' | i18n"></textarea>
+            <textarea class="note-field" [class.is-dense]="dense"
+              [style.height.px]="noteFieldHeightPx"
+              (pointerdown)="startNoteFieldResize($event)"
+              [(ngModel)]="value" [placeholder]="'sheet.placeholder.note' | i18n"></textarea>
           </ng-container>
           <ng-container *ngSwitchCase="'url'">
-            <!-- 沒有 size 屬性就無法縮小 -->
             <div class="hidden-spacer" style="font-size: 1.0em; font-family: Cambria, Georgia;">{{value}}</div>
-            <span style="white-space: nowrap">
-              <input type="url" style="width:calc(100% - 1.6rem); min-width:10px;" size="1" [(ngModel)]="value" [placeholder]="'common.urlExample' | i18n" />
-              <button style="width: 1.6rem" [attr.disabled]="!stringUtil.validUrl(value.toString()) ? '' : null" (click)="stringUtil.validUrl(value.toString()) ? openUrl(value) : false"><i class="material-icons" style="font-size: 1.0rem">{{ !stringUtil.validUrl(value.toString()) ? 'link_off' : (stringUtil.sameOrigin(value.toString()) ? 'link' : 'open_in_new') }}</i></button>
-            </span>
+            <div class="field-line">
+              <input type="url" class="field-grow" size="1" [(ngModel)]="value" [placeholder]="'common.urlExample' | i18n" />
+              <button class="url-open" [attr.disabled]="!stringUtil.validUrl(value.toString()) ? '' : null" (click)="stringUtil.validUrl(value.toString()) ? openUrl(value) : false"><i class="material-icons" style="font-size: 1.0rem">{{ !stringUtil.validUrl(value.toString()) ? 'link_off' : (stringUtil.sameOrigin(value.toString()) ? 'link' : 'open_in_new') }}</i></button>
+            </div>
           </ng-container>
           <ng-container *ngSwitchDefault>
             <!-- 沒有 size 屬性就無法縮小 -->
@@ -143,9 +149,10 @@
   </ng-container>
 </ng-container>
 <ng-template #editButtons>
-  <button (click)="addElement()"><i class="material-icons">add_circle</i></button>
-  <button (click)="upElement()"><i class="material-icons">arrow_upward</i></button>
-  <br>
-  <button (click)="deleteElement()"><i class="material-icons">remove_circle_outline</i></button>
-  <button (click)="downElement()"><i class="material-icons">arrow_downward</i></button>
+  <div class="edit-pad">
+    <button type="button" (click)="addElement()"><i class="material-icons">add_circle</i></button>
+    <button type="button" (click)="upElement()"><i class="material-icons">arrow_upward</i></button>
+    <button type="button" (click)="deleteElement()"><i class="material-icons">remove_circle_outline</i></button>
+    <button type="button" (click)="downElement()"><i class="material-icons">arrow_downward</i></button>
+  </div>
 </ng-template>

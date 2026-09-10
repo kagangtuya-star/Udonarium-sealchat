@@ -3,6 +3,8 @@ import { ChatTab } from '@udonarium/chat-tab';
 import { EventSystem } from '@udonarium/core/system';
 import { StringUtil } from '@udonarium/core/system/util/string-util';
 import { DataElement } from '@udonarium/data-element';
+import { checkPropertySheetValue } from '@udonarium/check-property-display';
+import { parseNoteFieldHeightPx } from '@udonarium/note-field-height';
 import { GameCharacter } from '@udonarium/game-character';
 import { PeerCursor } from '@udonarium/peer-cursor';
 import { TabletopObject } from '@udonarium/tabletop-object';
@@ -31,6 +33,10 @@ export class GameDataElementComponent implements OnInit, OnDestroy {
   @Input() dense: boolean = false;
 
   @HostBinding('class.dense') get denseClass(): boolean { return this.dense; }
+  @HostBinding('class.is-edit') get editClass(): boolean { return this.isEdit; }
+  @HostBinding('class.is-group') get isGroup(): boolean {
+    return (this.gameDataElement?.children?.length ?? 0) > 0;
+  }
 
   stringUtil = StringUtil;
 
@@ -58,15 +64,16 @@ export class GameDataElementComponent implements OnInit, OnDestroy {
   }
 
   get checkValue(): string {
-    if (this.currentValue == null) return '';
-    let ary = this.currentValue.toString().split(/[|｜]/, 2);
-    if (ary.length <= 1) return (this.value == null || this.value == '') ? '' : this.currentValue.toString();
-    let ret = (this.value == null || this.value == '') ? ary[1] : ary[0];
-    if (this.tabletopObject instanceof GameCharacter && this.tabletopObject.chatPalette) {
-      ret = this.tabletopObject.chatPalette.evaluate(ret, this.tabletopObject.rootDataElement);
-    }
-    return ret;
+    return checkPropertySheetValue(this.currentValue, this.value, this.tabletopObject);
   }
+
+  get noteFieldHeightPx(): number | null {
+    if (!this.gameDataElement?.isNote) return this.noteHeightOverride;
+    return this.noteHeightOverride ?? parseNoteFieldHeightPx(this.gameDataElement.getAttribute('noteHeight'));
+  }
+
+  private noteHeightOverride: number | null = null;
+  private noteResizeStop: (() => void) | null = null;
 
   get isCommonValue(): boolean {
     if (this.gameDataElement) {
@@ -143,6 +150,10 @@ export class GameDataElementComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     EventSystem.unregister(this);
+    if (this.noteResizeStop) {
+      window.removeEventListener('pointerup', this.noteResizeStop);
+      this.noteResizeStop = null;
+    }
   }
 
   addElement() {
@@ -177,6 +188,29 @@ export class GameDataElementComponent implements OnInit, OnDestroy {
 
   isNum(n: any): boolean {
     return isFinite(n);
+  }
+
+  startNoteFieldResize(ev: PointerEvent) {
+    const ta = ev.target as HTMLTextAreaElement;
+    if (!ta || ta.tagName !== 'TEXTAREA' || this.noteResizeStop) return;
+    const stop = () => {
+      window.removeEventListener('pointerup', stop);
+      this.noteResizeStop = null;
+      this.commitNoteFieldHeight(ta);
+    };
+    this.noteResizeStop = stop;
+    window.addEventListener('pointerup', stop);
+  }
+
+  private commitNoteFieldHeight(ta: HTMLTextAreaElement) {
+    if (!this.gameDataElement?.isNote) return;
+    const px = parseNoteFieldHeightPx(ta.offsetHeight);
+    if (px == null) return;
+    this.noteHeightOverride = px;
+    if (this.gameDataElement.getAttribute('noteHeight') !== String(px)) {
+      this.gameDataElement.setAttribute('noteHeight', px);
+    }
+    this.changeDetector.markForCheck();
   }
 
   openUrl(url) {
@@ -219,6 +253,7 @@ export class GameDataElementComponent implements OnInit, OnDestroy {
     this._name = object.name;
     this._currentValue = object.currentValue;
     this._value = object.value;
+    if (!this.noteResizeStop) this.noteHeightOverride = null;
   }
 
   private setUpdateTimer() {

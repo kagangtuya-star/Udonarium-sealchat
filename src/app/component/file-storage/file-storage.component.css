@@ -2,6 +2,7 @@
 
 :host {
   display: block;
+  user-select: none;
 }
 
 .file-storage {
@@ -220,15 +221,11 @@
   border: 1px solid #c4b29a;
   border-radius: 4px;
   background: #fff;
-}
-
-.selected-tags {
-  user-select: none;
+  user-select: text;
 }
 
 .word-selecter {
   padding: 0;
-  user-select: none;
   flex: 1 1 auto;
 }
 

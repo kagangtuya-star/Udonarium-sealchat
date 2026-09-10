@@ -14,6 +14,7 @@ import {
 import { EventSystem, Network } from '@udonarium/core/system';
 import { I18nService } from 'service/i18n.service';
 import { DataElement } from '@udonarium/data-element';
+import { checkPropertySheetValue } from '@udonarium/check-property-display';
 import { TabletopObject } from '@udonarium/tabletop-object';
 import { GameObjectInventoryService } from 'service/game-object-inventory.service';
 import { PointerDeviceService } from 'service/pointer-device.service';
@@ -270,14 +271,8 @@ export class OverviewPanelComponent implements OnChanges, AfterViewInit, OnDestr
   isOpenImageView: boolean = false;
 
   checkValue(dataElm): string {
-    if (!dataElm || dataElm.currentValue == null) return '';
-    let ary = dataElm.currentValue.toString().split(/[|｜]/, 2);
-    if (ary.length <= 1) return (dataElm.value == null || dataElm.value == '') ? '' : dataElm.currentValue.toString();
-    let ret = (dataElm.value == null || dataElm.value == '') ? ary[1] : ary[0];
-    if (this.tabletopObject instanceof GameCharacter && this.tabletopObject.chatPalette) {
-      ret = this.tabletopObject.chatPalette.evaluate(ret, this.tabletopObject.rootDataElement);
-    }
-    return ret;
+    if (!dataElm) return '';
+    return checkPropertySheetValue(dataElm.currentValue, dataElm.value, this.tabletopObject);
   }
 
   constructor(
