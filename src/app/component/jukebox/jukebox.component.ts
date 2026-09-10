@@ -5,6 +5,7 @@ import { AudioFile, AudioState } from '@udonarium/core/file-storage/audio-file';
 import { probeAudioDurationSec } from '@udonarium/core/file-storage/audio-duration';
 import { AudioPlayer, VolumeType } from '@udonarium/core/file-storage/audio-player';
 import { AudioStorage } from '@udonarium/core/file-storage/audio-storage';
+import { deleteAudioLibraryFiles } from '@udonarium/core/file-storage/audio-library-delete';
 import { FileArchiver } from '@udonarium/core/file-storage/file-archiver';
 import { MimeType } from '@udonarium/core/file-storage/mime-type';
 import {
@@ -1095,7 +1096,7 @@ export class JukeboxComponent implements OnInit, OnDestroy {
       return;
     }
     const name = this.displayNameFromUrl(url);
-    AudioStorage.instance.add({
+    AudioStorage.instance.addImported({
       identifier: url,
       name,
       type: '',
@@ -1227,7 +1228,7 @@ export class JukeboxComponent implements OnInit, OnDestroy {
       || event.code === 'Backspace' || event.key === 'Backspace')) {
       if (this.selectedAudioIds.size > 0) {
         event.preventDefault();
-        this.removeSelectedAudios(this.selectionAnchorFolderId || '');
+        this.deleteSelectedAudios();
       }
     }
   }
@@ -1693,7 +1694,7 @@ export class JukeboxComponent implements OnInit, OnDestroy {
       const menu: ContextMenuAction[] = [
         { name: t('jukebox.moveToFolder'), subActions: folderMoves },
         ContextMenuSeparator,
-        { name: t('jukebox.removeSelected'), action: () => this.removeSelectedAudios(fid) },
+        { name: t('jukebox.deleteSelected'), materialIcon: 'delete', action: () => this.deleteSelectedAudios() },
       ];
       this.contextMenuService.open(position, menu, t('jukebox.selectedCount', { count: selectedIds.length }));
       return;
@@ -1720,6 +1721,7 @@ export class JukeboxComponent implements OnInit, OnDestroy {
         name: this.trackName(i),
         action: () => this.assignAndPlay(audio, i)
       }));
+    const inSeveralFolders = this.library.foldersOf(audio.identifier).length > 1;
     const menu: ContextMenuAction[] = [
       { name: t('jukebox.audition'), action: () => this.play(audio), selfOnly: true },
       { name: t('jukebox.playOnce'), action: () => { this.library.setPlayLoop(audio.identifier, false, fid); this.playFormal(audio, fid); } },
@@ -1731,7 +1733,8 @@ export class JukeboxComponent implements OnInit, OnDestroy {
       { name: t('jukebox.rename'), action: () => this.renameAudio(audio) },
       { name: t('jukebox.moveToFolder'), subActions: folderMoves },
       ContextMenuSeparator,
-      { name: t('jukebox.removeFromLibrary'), action: () => this.removeAudio(audio, fid) },
+      ...(inSeveralFolders ? [{ name: t('jukebox.removeFromFolder'), action: () => this.removeAudioFromFolder(audio, fid) }] : []),
+      { name: t('jukebox.deleteFromLibrary'), materialIcon: 'delete', action: () => this.deleteAudioFromLibrary(audio) },
     ];
     this.contextMenuService.open(position, menu, this.displayName(audio));
   }
@@ -1789,17 +1792,16 @@ export class JukeboxComponent implements OnInit, OnDestroy {
     this.library.deleteFolder(folder.id);
   }
 
-  private async removeAudio(audio: AudioFile, folderId: string = '') {
+  private async removeAudioFromFolder(audio: AudioFile, folderId: string = '') {
     const ok = await this.modalService.open(ConfirmationComponent, {
-      title: this.i18n.t('jukebox.removeFromLibrary'),
-      text: this.i18n.t('jukebox.removeConfirm', { name: this.displayName(audio) }),
+      title: this.i18n.t('jukebox.removeFromFolder'),
+      text: this.i18n.t('jukebox.removeFromFolderConfirm', { name: this.displayName(audio) }),
       type: ConfirmationType.OK_CANCEL,
       materialIcon: 'delete',
     });
     if (ok !== true) return;
     this.removeAudioImmediate(audio, folderId || '');
-    this.selectedAudioIds.delete(audio.identifier);
-    this.selectedAudioIds = new Set(this.selectedAudioIds);
+    this.deselectAudio(audio.identifier);
   }
 
   private moveSelectedToFolder(folderId: string) {
@@ -1809,37 +1811,64 @@ export class JukeboxComponent implements OnInit, OnDestroy {
     this.expandedFolders[folderId || ''] = true;
   }
 
-  private async removeSelectedAudios(folderId: string = '') {
-    const ids = this.orderedSelectedIds();
+  private async deleteAudioFromLibrary(audio: AudioFile) {
+    if (!audio) return;
+    await this.commitLibraryDelete([audio.identifier], this.displayName(audio));
+  }
+
+  private async deleteSelectedAudios() {
+    await this.commitLibraryDelete(this.orderedSelectedIds());
+  }
+
+  private async commitLibraryDelete(ids: string[], singleName?: string) {
     if (ids.length < 1) return;
+    if (!(await this.confirmDeleteAudios(ids, singleName))) return;
+    this.deleteAudiosImmediate(ids);
+    if (ids.length === 1) this.deselectAudio(ids[0]);
+    else this.clearSelection();
+  }
+
+  private async confirmDeleteAudios(ids: string[], singleName?: string): Promise<boolean> {
+    if (ids.length < 1 || this.GuestMode()) return false;
+    const first = AudioStorage.instance.get(ids[0]);
+    const name = singleName || (first ? this.displayName(first) : ids[0]);
     const ok = await this.modalService.open(ConfirmationComponent, {
-      title: this.i18n.t('jukebox.removeFromLibrary'),
-      text: this.i18n.t('jukebox.removeSelectedConfirm', { count: ids.length }),
+      title: this.i18n.t('jukebox.deleteFromLibrary'),
+      text: ids.length === 1
+        ? this.i18n.t('jukebox.deleteConfirm', { name })
+        : this.i18n.t('jukebox.deleteSelectedConfirm', { count: ids.length }),
+      help: this.i18n.t('jukebox.deleteHelp'),
       type: ConfirmationType.OK_CANCEL,
       materialIcon: 'delete',
     });
-    if (ok !== true) return;
-    const fid = folderId || this.selectionAnchorFolderId || '';
-    for (const id of ids) {
-      const audio = AudioStorage.instance.get(id);
-      if (audio) this.removeAudioImmediate(audio, fid);
-      else {
-        const gone = this.library.removeFromFolder(id, fid);
-        if (gone) AudioStorage.instance.delete(id);
-      }
-    }
-    AudioStorage.instance.lazySynchronize(100);
-    this.clearSelection();
+    return ok === true;
+  }
+
+  private deleteAudiosImmediate(ids: string[]) {
+    for (const id of ids) this.unlinkLibraryAudio(id);
+    deleteAudioLibraryFiles(ids);
+  }
+
+  private stopPlayback(audio: AudioFile | null) {
+    if (!audio) return;
+    this.stopBGM(audio);
+    if (this.auditionPlayer.audio === audio) this.stop();
+  }
+
+  private unlinkLibraryAudio(audioId: string) {
+    this.stopPlayback(AudioStorage.instance.get(audioId));
+    this.jukebox?.dropDeletedAudio(audioId);
   }
 
   private removeAudioImmediate(audio: AudioFile, folderId: string = '') {
-    this.stopBGM(audio);
-    if (this.auditionPlayer.audio === audio) this.stop();
     const gone = this.library.removeFromFolder(audio.identifier, folderId || '');
-    if (gone) {
-      AudioStorage.instance.delete(audio.identifier);
-      AudioStorage.instance.lazySynchronize(100);
-    }
+    if (gone) this.deleteAudiosImmediate([audio.identifier]);
+    else this.stopPlayback(audio);
+  }
+
+  private deselectAudio(audioId: string) {
+    this.selectedAudioIds.delete(audioId);
+    this.selectedAudioIds = new Set(this.selectedAudioIds);
   }
 
   private displayNameFromUrl(url: string): string {

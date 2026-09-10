@@ -121,6 +121,7 @@ export class FolderMediaHydrator {
   async hydrate(kind: FileResourceKind, identifier: string): Promise<boolean> {
     const id = (identifier || '').toLowerCase();
     if (!id || !isContentHashIdentifier(id) || !this.canHydrate()) return false;
+    if (this.isLibraryDeleted(id)) return false;
     if (this.isComplete(kind, id)) return true;
 
     const key = `${kind}:${id}`;
@@ -143,23 +144,30 @@ export class FolderMediaHydrator {
       || this.isComplete('video', identifier);
   }
 
+  private isLibraryDeleted(identifier: string): boolean {
+    return ImageStorage.instance.isDeleted(identifier) || AudioStorage.instance.isDeleted(identifier);
+  }
+
   private async importMediaByHash(identifier: string): Promise<boolean> {
+    if (this.isLibraryDeleted(identifier)) return false;
     const fileName = await this.findFileName(identifier);
-    if (!fileName) return false;
+    if (!fileName || this.isLibraryDeleted(identifier)) return false;
 
     const mediaDir = await FolderBackupService.instance?.getMediaDirectoryHandle();
-    if (!mediaDir) return false;
+    if (!mediaDir || this.isLibraryDeleted(identifier)) return false;
 
     try {
       const raw = await (await mediaDir.getFileHandle(fileName)).getFile();
+      if (this.isLibraryDeleted(identifier)) return false;
       const type = MimeType.type(fileName) || raw.type || '';
       const file = new File([raw], fileName, { type });
+      if (this.isLibraryDeleted(identifier)) return false;
       await FileArchiver.instance.importMediaFile(file);
     } catch (e) {
       console.warn('FolderMediaHydrator hydrate failed', fileName, e);
       return false;
     }
-    return true;
+    return !this.isLibraryDeleted(identifier);
   }
 
   private async hydrateInner(kind: FileResourceKind, identifier: string): Promise<boolean> {
@@ -171,6 +179,7 @@ export class FolderMediaHydrator {
   private async hydrateFromDisk(identifier: string): Promise<boolean> {
     const id = (identifier || '').toLowerCase();
     if (!id || !isContentHashIdentifier(id) || !this.canHydrate()) return false;
+    if (this.isLibraryDeleted(id)) return false;
     if (this.isCompleteAny(id)) return true;
 
     const key = `disk:${id}`;

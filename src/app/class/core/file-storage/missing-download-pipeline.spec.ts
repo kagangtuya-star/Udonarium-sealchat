@@ -68,6 +68,17 @@ describe('missing-download-pipeline', () => {
     expect(local.get('need')).toBe(ImageState.NULL);
   });
 
+  it('collectMissingDownloadRequests skips shouldSkip ids without placeholders', () => {
+    hooks.shouldSkip = id => id === 'deleted';
+    const request = collectMissingDownloadRequests([
+      { identifier: 'deleted', state: ImageState.COMPLETE },
+      { identifier: 'need', state: ImageState.COMPLETE },
+    ], hooks);
+    expect(request).toEqual([{ identifier: 'need', state: ImageState.NULL }]);
+    expect(local.has('deleted')).toBeFalse();
+    expect(local.get('need')).toBe(ImageState.NULL);
+  });
+
   it('queueMissingDownloads enqueues and invokes requestOne', () => {
     local.set('need', ImageState.NULL);
     queueMissingDownloads(

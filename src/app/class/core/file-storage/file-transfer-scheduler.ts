@@ -234,6 +234,19 @@ export class FileReceiveScheduler {
     FileReceiveScheduler.schedule();
   }
 
+  /** Drop queued / in-flight receive for a library delete. */
+  static abortReceive(kind: FileResourceKind, identifier: string): void {
+    const key = FileReceiveScheduler.receiveKey(kind, identifier);
+    FileReceiveScheduler.pending = FileReceiveScheduler.pending.filter(
+      p => FileReceiveScheduler.receiveKey(p.kind, p.identifier) !== key,
+    );
+    FileReceiveScheduler.outboundPending.delete(key);
+    FileReceiveScheduler.outboundRequests.delete(key);
+    FileReceiveScheduler.activeReceives.delete(key);
+    FileReceiveScheduler.receiveRetryAfter.delete(key);
+    FileReceiveScheduler.schedule();
+  }
+
   /** REQUEST never left the client (e.g. peer DataChannel not open yet). */
   static abortOutboundRequest(kind: FileResourceKind, identifier: string): void {
     FileReceiveScheduler.releaseOutboundToPending(

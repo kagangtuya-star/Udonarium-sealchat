@@ -114,6 +114,7 @@ describe('RoomConnectHelper.reopenLastRoomOrLobby', () => {
   const defaultJoinStableMs = RoomConnectHelper.JOIN_STABLE_MS;
 
   beforeEach(() => {
+    try { jasmine.clock().uninstall(); } catch { /* not installed */ }
     RoomConnectHelper.abortReopenInFlight();
     (RoomConnectHelper as any).joinOwnedUntil = 0;
     (RoomConnectHelper as any).rekeyInFlight = false;
@@ -241,12 +242,17 @@ describe('RoomConnectHelper.reopenLastRoomOrLobby', () => {
       spyOn(RoomConnectHelper, 'remeshRoomPeers').and.resolveTo();
       spyOn(ObjectStore.instance, 'isDeleted').and.returnValue(true);
       const release = spyOn(ObjectSynchronizer.instance, 'releasePeerSync').and.callThrough();
-      const callSpy = spyOn(EventSystem, 'call');
+      const catalogDeletes: unknown[] = [];
+      spyOn(EventSystem, 'call').and.callFake(((name: string, data?: { identifier?: string }, sendTo?: string) => {
+        if (name === 'DELETE_GAME_OBJECT' && data?.identifier === 'queued-catalog-item') {
+          catalogDeletes.push(sendTo);
+        }
+      }) as typeof EventSystem.call);
 
       expect(RoomConnectHelper.reopenLastRoomOrLobby('disconnected', { skipJitter: true })).toBe('started');
       EventSystem.trigger({
         eventName: 'SYNCHRONIZE_GAME_OBJECT',
-        data: [{ identifier: 'ChatTabList', version: 1 }],
+        data: [{ identifier: 'queued-catalog-item', version: 1 }],
         sendFrom: 'ghost',
       });
       await new Promise<void>(resolve => setTimeout(resolve, 40));
@@ -255,7 +261,7 @@ describe('RoomConnectHelper.reopenLastRoomOrLobby', () => {
 
       expect(release).toHaveBeenCalledWith(false);
       expect(release).not.toHaveBeenCalledWith(true);
-      expect(callSpy).not.toHaveBeenCalled();
+      expect(catalogDeletes).toEqual([]);
       expect((RoomConnectHelper as any).reopenPeerSyncHeld).toBeFalse();
     } finally {
       ObjectSynchronizer.instance.destroy();

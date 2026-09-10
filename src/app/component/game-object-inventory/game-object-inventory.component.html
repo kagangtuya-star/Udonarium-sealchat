@@ -181,7 +181,7 @@
         </div>
       </ng-container>
       <ng-container *ngSwitchCase="'checkProperty'">
-        <div class="tag-name" [style.textDecoration]="dataElm.value ? 'none' : 'line-through'"><span>{{dataElm.name}}</span></div>
+        <div class="tag-name" [style.textDecoration]="dataElm.value ? 'none' : 'line-through'"><span>{{dataElm.name}}</span> {{ dataElm.checkDisplayValue() }}</div>
         <div style="text-align: center;">
           <div style="display: inline-block;">
             <div class="tag-value-box">

@@ -3,6 +3,7 @@ import { Attributes } from './core/synchronize-object/attributes';
 import { SyncObject, SyncVar } from './core/synchronize-object/decorator';
 import { ObjectNode } from './core/synchronize-object/object-node';
 import { CompareOption, StringUtil } from './core/system/util/string-util';
+import { checkPropertyDisplayValue } from './check-property-display';
 
 @SyncObject('data')
 export class DataElement extends ObjectNode {
@@ -151,5 +152,11 @@ export class DataElement extends ObjectNode {
       if (pair[0] == null || (pair[0].trim() === '' && !/[|｜]/.test(this.currentValue + ''))) pair[0] = '1';
     } 
     return pair[ this.value ? 0 : 1 ].trim();
+  }
+
+  /** UI label: a single option string stays visible when unchecked (on|off still switches). */
+  checkDisplayValue(): string {
+    if (!this.isCheckProperty) return '';
+    return checkPropertyDisplayValue(this.currentValue, this.value);
   }
 }

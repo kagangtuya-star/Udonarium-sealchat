@@ -168,7 +168,7 @@ export class FileArchiver {
         if (!StringUtil.validUrl(url)) continue;
         const name = (typeof item.name === 'string' && item.name.trim()) ? item.name.trim() : url;
         const identifier = (typeof item.identifier === 'string' && item.identifier.trim()) ? item.identifier.trim() : url;
-        AudioStorage.instance.add({
+        AudioStorage.instance.addImported({
           identifier,
           name,
           type: '',
@@ -184,26 +184,26 @@ export class FileArchiver {
 
   /** Import one media blob from folder backup media/ (reuses ZIP restore handlers). */
   async importMediaFile(file: File): Promise<void> {
-    await this.handleImage(file);
-    await this.handleAudio(file);
+    await this.handleImage(file, { revive: false });
+    await this.handleAudio(file, { revive: false });
     await this.handlePdf(file);
     await this.handleVideo(file);
   }
 
-  private async handleImage(file: File) {
+  private async handleImage(file: File, opts?: { revive?: boolean }) {
     if (file.type.indexOf('image/') < 0) return;
     if (this.maxImageSize < file.size) {
       console.warn(`File size limit exceeded. -> ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
       return;
     }
     try {
-      await this.addPackedOrFresh(file, ImageStorage.instance);
+      await this.addPackedOrFresh(file, ImageStorage.instance, opts);
     } catch (e) {
       console.warn(`Image import failed (normalize/store). -> ${file.name}`, e);
     }
   }
 
-  private async handleAudio(file: File) {
+  private async handleAudio(file: File, opts?: { revive?: boolean }) {
     if (!MimeType.isAudioFile(file)) return;
     if (this.maxAudioeSize < file.size) {
       console.warn(`File size limit exceeded. -> ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
@@ -221,8 +221,10 @@ export class FileArchiver {
     }
 
     if (isMediaFileName(importFile.name)) {
-      const audio = await this.addPackedOrFresh(importFile, AudioStorage.instance);
-      if (audio) AudioLibrary.instance.ensureListed(audio.identifier);
+      const audio = await this.addPackedOrFresh(importFile, AudioStorage.instance, opts);
+      if (audio && AudioStorage.instance.get(audio.identifier)) {
+        AudioLibrary.instance.ensureListed(audio.identifier);
+      }
       return;
     }
 
@@ -232,7 +234,7 @@ export class FileArchiver {
       : undefined;
     const created = await AudioFile.createAsync(importFile, displayName);
     const existed = !!AudioStorage.instance.get(created.identifier);
-    const audio = AudioStorage.instance.add(created);
+    const audio = AudioStorage.instance.addImported(created);
     if (!audio) return;
     if (existed) {
       AudioLibrary.instance.ensureListed(audio.identifier);
@@ -263,10 +265,14 @@ export class FileArchiver {
 
   private addPackedOrFresh<T>(
     file: File,
-    storage: { addPackedAsync(file: File): Promise<T>; addAsync(file: File): Promise<T> },
+    storage: {
+      addPackedAsync(file: File, opts?: { revive?: boolean }): Promise<T>;
+      addAsync(file: File): Promise<T>;
+    },
+    opts?: { revive?: boolean },
   ): Promise<T> {
     return isMediaFileName(file.name)
-      ? storage.addPackedAsync(file)
+      ? storage.addPackedAsync(file, opts)
       : storage.addAsync(file);
   }
 

@@ -6,6 +6,7 @@ import { GameObject, ObjectContext } from './core/synchronize-object/game-object
 import { InnerXml } from './core/synchronize-object/object-serializer';
 import { ObjectStore } from './core/synchronize-object/object-store';
 import { EventSystem } from './core/system';
+import { trackAfterDroppingAudio } from './jukebox-drop-audio';
 
 export const JUKEBOX_TRACK_COUNT = 5;
 /** Local-only weather SE slot (index 4 / track 5). Does not sync tracksJson. */
@@ -626,6 +627,32 @@ export class Jukebox extends GameObject implements InnerXml {
 
   clearSoundboardSlot(index: number) {
     this.setSoundboardSlot(index, '', '');
+  }
+
+  /** Drop a deleted library file from assignments, queues, and pads. */
+  dropDeletedAudio(audioId: string) {
+    if (!audioId) return;
+    this.ensureMigrated();
+    const next = this.tracks.slice();
+    const play: number[] = [];
+    const stop: number[] = [];
+    for (let i = 0; i < next.length; i++) {
+      const result = trackAfterDroppingAudio(next[i], audioId);
+      if (result.action === 'unchanged') continue;
+      next[i] = result.next;
+      if (result.action === 'play') play.push(i);
+      else if (result.action === 'clear') stop.push(i);
+    }
+    this.tracks = next;
+    this.syncLegacyFields();
+    for (const i of stop) this._stopTrack(i, true, true);
+    for (const i of play) {
+      this._playTrack(i, { crossfade: i <= JUKEBOX_TRANSPORT_MAX });
+    }
+    const pads = this.soundboard;
+    for (let i = 0; i < pads.length; i++) {
+      if (pads[i]?.audioIdentifier === audioId) this.clearSoundboardSlot(i);
+    }
   }
 
   /** Toggle play/pause/resume for a track that already has an assigned audio (HUD). */

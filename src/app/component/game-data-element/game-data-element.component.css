@@ -88,18 +88,63 @@
   margin-left: 0;
 }
 
+.field-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.field-grow {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+}
+
+.check-label {
+  font-size: 1em;
+  font-family: Cambria, Georgia;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ability-value {
+  width: 4.5em;
+  max-width: 5em;
+  text-align: right;
+}
+
+.field-line .modeifire-type {
+  max-width: 8em;
+}
+
+.ability-mod {
+  font-size: smaller;
+  flex: 0 0 auto;
+}
+
+.url-open {
+  flex: 0 0 1.6rem;
+  width: 1.6rem;
+}
+
 .note-field {
   width: 100%;
-  height: 5em;
-  min-width: 50px;
+  min-width: 0;
+  min-height: 5em;
+  max-height: 50vh;
+  height: auto;
   resize: vertical;
   font-size: 0.8em;
   box-sizing: border-box;
 }
 
 .note-field.is-dense {
-  height: 2.2em;
   min-height: 2.2em;
+  height: auto;
   font-size: 11px;
   line-height: 1.25;
   padding: 1px 3px;
@@ -271,9 +316,94 @@
 :host.dense textarea,
 :host.dense .note-field.is-dense {
   width: 100% !important;
-  height: 2.2em !important;
-  min-height: 2.2em !important;
+  min-height: 2.2em;
+  height: auto;
+  max-height: 50vh;
   resize: vertical;
+}
+
+/* Edit mode: keep type/name/value on one aligned row without stretching the card. */
+.edit-pad {
+  display: grid;
+  grid-template-columns: 14px 14px;
+  grid-template-rows: 14px 14px;
+  gap: 0;
+  align-items: center;
+  justify-items: center;
+}
+
+.edit-pad button {
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+  width: 14px;
+  height: 14px;
+  min-width: 0;
+}
+
+.edit-pad button i.material-icons {
+  font-size: 12px;
+}
+
+:host.is-edit {
+  width: 100%;
+  box-sizing: border-box;
+  column-gap: 4px;
+}
+
+:host.is-edit.table-row:not(.is-group),
+:host.is-edit.is-group {
+  display: grid;
+}
+
+:host.is-edit.table-row:not(.is-group) {
+  grid-template-columns: 28px minmax(4.4em, 5.6em) minmax(3em, 0.7fr) minmax(0, 1.4fr);
+  align-items: center;
+}
+
+:host.is-edit.is-group {
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  flex-direction: unset;
+}
+
+:host.is-edit .table-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 1px 0;
+  border-bottom: none;
+}
+
+:host.is-edit .edit-tools {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: normal;
+}
+
+:host.is-edit .table-cell_type {
+  overflow: hidden;
+}
+
+:host.is-edit .table-cell_type select,
+:host.is-edit .table-cell_name input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:host.is-edit .table-cell_type select {
+  font-size: 10px;
+  padding: 0 1px;
+}
+
+:host.is-edit.is-group .dense-spacer,
+:host.is-edit .hidden-spacer {
+  display: none !important;
+}
+
+:host.is-edit .dense-section-body {
+  min-width: 0;
 }
 .table {
   display:table; 

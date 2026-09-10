@@ -100,6 +100,14 @@
       >
         <i class="material-icons" [ngClass]="{'red-eye': selectedImagesIsHidden}">{{ selectedImagesIsHidden ? 'visibility' : 'visibility_off' }}</i>
       </button>
+      <button
+        type="button"
+        class="btn btn-sm btn-danger"
+        [attr.title]="'file.delete' | i18n"
+        (click)="deleteSelectedImages()"
+      >
+        <i class="material-icons">delete</i>
+      </button>
       <ng-container *ngIf="selectedImagesOwnWords().length > 0">
         <span class="selected-tags">
           <label *ngFor="let word of selectedImagesOwnWords()" class="word-tag removable" (click)="removeTagWord(word)">{{ word }}<sup>×</sup></label>
