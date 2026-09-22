@@ -47,6 +47,11 @@ export class ObjectPreviewService implements OnDestroy {
   private readonly onMouseButtons = (e: MouseEvent) => {
     this.pointerButtons = e.buttons;
   };
+  /** Bubble phase — runs after preview layer pointerup clears drag flags. */
+  private readonly onPointerUp = (e: PointerEvent) => {
+    this.pointerButtons = e.buttons;
+    this.closeTransientIfModifierReleased();
+  };
 
   constructor(
     private pointerDeviceService: PointerDeviceService,
@@ -112,6 +117,13 @@ export class ObjectPreviewService implements OnDestroy {
     if (!this.transient) return;
     this.transient = null;
     this.emitState();
+  }
+
+  /** Hold-to-preview: close transient once Ctrl/Meta is up and no preview drag is active. */
+  closeTransientIfModifierReleased() {
+    if (this.modifierPreviewHeld || !this.transient) return;
+    if (ObjectPreviewService.previewConsumesPointer) return;
+    this.ngZone.run(() => this.closeTransient());
   }
 
   closePinned(id: string) {
@@ -193,6 +205,9 @@ export class ObjectPreviewService implements OnDestroy {
       window.addEventListener('mousedown', this.onMouseButtons, true);
       window.addEventListener('mousemove', this.onMouseButtons, true);
       window.addEventListener('mouseup', this.onMouseButtons, true);
+      window.addEventListener('pointerdown', this.onMouseButtons as EventListener, true);
+      window.addEventListener('pointermove', this.onMouseButtons as EventListener, true);
+      window.addEventListener('pointerup', this.onPointerUp, false);
     });
   }
 
@@ -205,19 +220,24 @@ export class ObjectPreviewService implements OnDestroy {
     window.removeEventListener('mousedown', this.onMouseButtons, true);
     window.removeEventListener('mousemove', this.onMouseButtons, true);
     window.removeEventListener('mouseup', this.onMouseButtons, true);
+    window.removeEventListener('pointerdown', this.onMouseButtons as EventListener, true);
+    window.removeEventListener('pointermove', this.onMouseButtons as EventListener, true);
+    window.removeEventListener('pointerup', this.onPointerUp, false);
   }
 
   private handleKeyDown(e: KeyboardEvent) {
     if (e.key !== 'Control' && e.key !== 'Meta') return;
     this.modifierPreviewHeld = true;
     if (e.repeat) return;
+    if (this.pointerButtons > 0) return;
     this.tryOpenTransientFromHover();
   }
 
   private handleKeyUp(e: KeyboardEvent) {
     if (e.key !== 'Control' && e.key !== 'Meta') return;
     this.modifierPreviewHeld = false;
-    this.ngZone.run(() => this.closeTransient());
+    if (this.pointerButtons > 0) return;
+    this.closeTransientIfModifierReleased();
   }
 
   private handleBlur() {
@@ -229,8 +249,7 @@ export class ObjectPreviewService implements OnDestroy {
   private tryOpenTransientFromHover() {
     if (!this.hoveredId || !this.hoveredFactory) return;
     if (this.pointerDeviceService.isDragging) return;
-    // Clear stuck mouse-button bits from a lost mouseup so Ctrl preview still works.
-    this.pointerButtons = 0;
+    if (this.pointerButtons > 0) return;
     const payload = this.hoveredFactory();
     if (!payload || !this.hasPreviewContent(payload)) return;
     // Already showing this object — keep zoom/pan.

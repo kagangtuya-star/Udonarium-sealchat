@@ -380,6 +380,7 @@ export class ObjectPreviewLayerComponent implements OnInit, OnDestroy, AfterView
         (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
       } catch { /* ignore */ }
       if (!moved) this.registerPreviewTap(p);
+      this.objectPreview.closeTransientIfModifierReleased();
       this.changeDetector.markForCheck();
       return;
     }
@@ -392,6 +393,7 @@ export class ObjectPreviewLayerComponent implements OnInit, OnDestroy, AfterView
       (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
     } catch { /* ignore */ }
     if (!moved) this.registerPreviewTap(p);
+    this.objectPreview.closeTransientIfModifierReleased();
     this.changeDetector.markForCheck();
   }
 
@@ -505,6 +507,7 @@ export class ObjectPreviewLayerComponent implements OnInit, OnDestroy, AfterView
       (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
     } catch { /* ignore */ }
     if (!moved) this.registerPreviewTap(p);
+    this.objectPreview.closeTransientIfModifierReleased();
   }
 
   private goToPage(p: ObjectPreviewPayload, page: number) {

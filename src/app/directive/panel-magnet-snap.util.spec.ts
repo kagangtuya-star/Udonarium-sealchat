@@ -32,4 +32,28 @@ describe('panelMagnetSnapOffset', () => {
     expect(snap.x).toBe(-8);
     expect(snap.y).toBe(0);
   });
+
+  it('snaps panel top edge to viewport top', () => {
+    const viewport = toPanelMagnetRect({ left: 0, top: 0, width: 1280, height: 800 });
+    const moving = toPanelMagnetRect({ left: 200, top: 8, width: 300, height: 400 });
+    const snap = panelMagnetSnapOffset(moving, [viewport], 12);
+    expect(snap.x).toBe(0);
+    expect(snap.y).toBe(-8);
+  });
+
+  it('snaps panel right edge to viewport right', () => {
+    const viewport = toPanelMagnetRect({ left: 0, top: 0, width: 1280, height: 800 });
+    const moving = toPanelMagnetRect({ left: 972, top: 120, width: 300, height: 400 });
+    const snap = panelMagnetSnapOffset(moving, [viewport], 12);
+    expect(snap.x).toBe(8);
+    expect(snap.y).toBe(0);
+  });
+
+  it('snaps panel bottom edge to viewport bottom', () => {
+    const viewport = toPanelMagnetRect({ left: 0, top: 0, width: 1280, height: 800 });
+    const moving = toPanelMagnetRect({ left: 200, top: 492, width: 300, height: 300 });
+    const snap = panelMagnetSnapOffset(moving, [viewport], 12);
+    expect(snap.x).toBe(0);
+    expect(snap.y).toBe(8);
+  });
 });

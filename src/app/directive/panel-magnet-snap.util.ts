@@ -17,7 +17,7 @@ export function toPanelMagnetRect(box: { left: number; top: number; width: numbe
   };
 }
 
-/** Snap a moving panel to nearby panel edges within threshold (viewport px). */
+/** Snap a moving panel to nearby panel or viewport edges within threshold (viewport px). */
 export function panelMagnetSnapOffset(
   moving: PanelMagnetRect,
   others: PanelMagnetRect[],

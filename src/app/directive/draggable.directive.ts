@@ -19,6 +19,8 @@ export class DraggableDirective implements AfterViewInit, OnDestroy {
   @Input('draggable.stack') stackSelector: string = '';
   /** Snap panel edges to other stack peers while dragging (desktop panels). */
   @Input('draggable.magnetSnap') magnetSnap: boolean = true;
+  /** Snap panel edges to the draggable bounds viewport (top/bottom/left/right). */
+  @Input('draggable.magnetViewport') magnetViewport: boolean = true;
   @Input('draggable.magnetThreshold') magnetThreshold: number = 12;
   @Input('draggable.opacity') opacity: number = 0.7;
   @Input('draggable.allowOverHalf') allowOverHalf: boolean = false;
@@ -215,16 +217,27 @@ export class DraggableDirective implements AfterViewInit, OnDestroy {
   }
 
   private calcMagnetSnapOffset(trans: PointerCoordinate): PointerCoordinate {
-    if (!this.magnetSnap || this.stackSelector.length < 1) return { x: 0, y: 0, z: 0 };
+    if (!this.magnetSnap) return { x: 0, y: 0, z: 0 };
 
     const doc = this.elementRef.nativeElement.ownerDocument;
-    const stacks = doc.querySelectorAll<HTMLElement>(this.stackSelector);
-    const others = [];
-    stacks.forEach(elm => {
-      if (elm === this.elementRef.nativeElement) return;
-      others.push(toPanelMagnetRect(elm.getBoundingClientRect()));
-    });
-    if (!others.length) return { x: 0, y: 0, z: 0 };
+    const snapTargets = [];
+
+    if (this.stackSelector.length >= 1) {
+      const stacks = doc.querySelectorAll<HTMLElement>(this.stackSelector);
+      stacks.forEach(elm => {
+        if (elm === this.elementRef.nativeElement) return;
+        snapTargets.push(toPanelMagnetRect(elm.getBoundingClientRect()));
+      });
+    }
+
+    if (this.magnetViewport) {
+      const boundsElm = doc.querySelector(this.boundsSelector);
+      if (boundsElm) {
+        snapTargets.push(toPanelMagnetRect(boundsElm.getBoundingClientRect()));
+      }
+    }
+
+    if (!snapTargets.length) return { x: 0, y: 0, z: 0 };
 
     const moving = toPanelMagnetRect({
       left: this.startViewportBox.left + trans.x,
@@ -232,7 +245,7 @@ export class DraggableDirective implements AfterViewInit, OnDestroy {
       width: this.startViewportBox.width,
       height: this.startViewportBox.height,
     });
-    const snap = panelMagnetSnapOffset(moving, others, this.magnetThreshold);
+    const snap = panelMagnetSnapOffset(moving, snapTargets, this.magnetThreshold);
     return { x: snap.x, y: snap.y, z: 0 };
   }
 
